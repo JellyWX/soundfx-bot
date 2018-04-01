@@ -1,9 +1,12 @@
 from server_data import ServerData
+from ctypes.util import find_library
 import discord
 import sys
 import os
 import msgpack
 import zlib
+import aiohttp
+import io
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -17,7 +20,8 @@ class BotClient(discord.Client):
             'help' : self.help,
             'info': self.info,
             'prefix' : self.change_prefix,
-            'upload' : self.wait_for_file
+            'upload' : self.wait_for_file,
+            'play' : self.play
         }
 
         try:
@@ -35,6 +39,8 @@ class BotClient(discord.Client):
 
 
     async def on_ready(self):
+        discord.opus.load_opus(find_library('opus'))
+
         print('Logged in as')
         print(self.user.name)
         print(self.user.id)
@@ -144,6 +150,30 @@ class BotClient(discord.Client):
         else:
             server.sounds[stripped] = msg.attachments[0].url
             await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
+            ## TODO add check to prevent users adding millions of MP3s.
+
+    async def play(self, message, stripped):
+        server = self.get_server(message.guild)
+
+        if message.author.voice is None:
+            await message.channel.send('You aren\'t in a voice channel.')
+
+        elif stripped == '':
+            await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
+
+        elif stripped not in server.sounds.keys():
+            await message.channel.send('Sound `{}` could not be found. Use `{}list` to view all sounds'.format(stripped, server.prefix))
+
+        else:
+            try:
+                voice = await message.author.voice.channel.connect()
+            except discord.errors.ClientException:
+                voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
+
+            if voice.is_playing():
+                voice.stop()
+
+            voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]))
 
 
 try: ## token grabbing code
