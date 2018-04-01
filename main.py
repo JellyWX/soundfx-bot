@@ -21,7 +21,9 @@ class BotClient(discord.Client):
             'info': self.info,
             'prefix' : self.change_prefix,
             'upload' : self.wait_for_file,
-            'play' : self.play
+            'play' : self.play,
+            'list' : self.list,
+            'delete' : self.delete
         }
 
         try:
@@ -134,25 +136,34 @@ class BotClient(discord.Client):
 
 
     async def wait_for_file(self, message, stripped):
+        stripped = stripped.lower()
         server = self.get_server(message.guild)
-        if stripped == '':
+
+        if len(server.sounds) >= 15 and stripped not in server.sounds.keys():
+            await message.channel.send('Sorry, but the maximum is 15 sounds per server. You can either overwrite an existing sound name or use `{}delete` to remove a sound.')
+
+        elif stripped == '':
             await message.channel.send('Please provide a name for your sound.')
-            return
-        else:
-            await message.channel.send('Saving as: {}. Send an MP3 file <1MB or send any other message to cancel.'.format(stripped))
 
-        msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
+        elif len(stripped) > 20:
+            await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
-        if msg.attachments == [] or not msg.attachments[0].filename.endswith('mp3'):
-            await message.channel.send('Please attach an MP3 file following the `{}upload` command. Aborted.'.format(server.prefix))
-        elif msg.attachments[0].size > 1000000:
-            await message.channel.send('Please only send MP3 files that are under 1MB.')
         else:
-            server.sounds[stripped] = msg.attachments[0].url
-            await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
-            ## TODO add check to prevent users adding millions of MP3s.
+            await message.channel.send('Saving as: `{}`. Send an MP3 file <650KB or send any other message to cancel.'.format(stripped))
+
+            msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
+
+            if msg.attachments == [] or not msg.attachments[0].filename.endswith('mp3'):
+                await message.channel.send('Please attach an MP3 file following the `{}upload` command. Aborted.'.format(server.prefix))
+            elif msg.attachments[0].size > 650000:
+                await message.channel.send('Please only send MP3 files that are under 650KB.')
+            else:
+                server.sounds[stripped] = msg.attachments[0].url
+                await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
+
 
     async def play(self, message, stripped):
+        stripped = stripped.lower()
         server = self.get_server(message.guild)
 
         if message.author.voice is None:
@@ -174,6 +185,23 @@ class BotClient(discord.Client):
                 voice.stop()
 
             voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]))
+
+
+    async def list(self, message, stripped):
+        server = self.get_server(message.guild)
+
+        await message.channel.send('All sounds on server: {}'.format(', '.join(server.sounds.keys())))
+
+
+    async def delete(self, message, stripped):
+        stripped = stripped.lower()
+        server = self.get_server(message.guild)
+
+        if stripped in server.sounds.keys():
+            del server.sounds[stripped]
+            await message.channel.send('Deleted {}. You have used {}/15 sounds.'.format(stripped, len(server.sounds)))
+        else:
+            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
 
 try: ## token grabbing code
