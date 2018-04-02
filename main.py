@@ -1,4 +1,6 @@
+from sloccount import sloccount_py
 from server_data import ServerData
+
 from ctypes.util import find_library
 import discord ## pip3 install git+...
 import sys
@@ -49,13 +51,13 @@ class BotClient(discord.Client):
         print(self.user.name)
         print(self.user.id)
         print('------------')
-        await client.change_presence(activity=discord.Game(name='!info'))
+        await client.change_presence(activity=discord.Game(name='@{} info'.format(self.user.name)))
 
 
     async def on_guild_join(self, guild):
         self.data.append(ServerData(**{
             'id' : guild.id,
-            'prefix' : '!',
+            'prefix' : '?',
             'sounds' : {}
             }
         ))
@@ -73,7 +75,7 @@ class BotClient(discord.Client):
         if len([d for d in self.data if d.id == message.guild.id]) == 0:
             self.data.append(ServerData(**{
                 'id' : message.guild.id,
-                'prefix' : '!',
+                'prefix' : '?',
                 'sounds' : {}
                 }
             ))
@@ -133,8 +135,28 @@ class BotClient(discord.Client):
 
 
     async def info(self, message, stripped):
-        embed = discord.Embed(description=self.strings[0])
-        await message.channel.send(embed=embed)
+        em = discord.Embed(title='**INFO**',description=
+        '''\u200B
+  Default prefix: `?`
+  Reset prefix: `@{user} prefix ?`
+  Help: `{p}help`
+
+  **Welcome to SFX!**
+  Developer: <@203532103185465344>
+  Find me on https://discord.gg/WQVaYmT and on https://github.com/JellyWX :)
+
+  Framework: `discord.py`
+  Total SᵒᵘʳᶜᵉLᶦⁿᵉˢOᶠCᵒᵈᵉ: {sloc} (100% Python)
+  Hosting provider: OVH
+
+  *If you have enquiries about new features, please send to the discord server*
+  *If you have enquiries about bot development for you or your server, please DM me*
+        '''.format(user=self.user.name, p=self.get_server(message.guild).prefix, sloc=sloccount_py('.'))
+        )
+
+        await message.channel.send(embed=em)
+
+        await message.add_reaction('📬')
 
 
     async def wait_for_file(self, message, stripped):
