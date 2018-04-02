@@ -129,7 +129,7 @@ class BotClient(discord.Client):
 
 `?prefix <new prefix>` : change the prefix
 
-`?upload <name>` : upload an MP3 or OGG to the name
+`?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
 
 `?play <name>` : play back a saved sound
 
@@ -182,15 +182,15 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
         else:
-            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <650KB or send any other message to cancel.'.format(stripped))
+            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB or send any other message to cancel.'.format(stripped))
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
             if msg.attachments == [] or not msg.attachments[0].filename.endswith(('mp3', 'ogg')):
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
-            elif msg.attachments[0].size > 650000:
-                await message.channel.send('Please only send MP3/OGG files that are under 650KB. If your file is an MP3, consider turning it to an OGG for more optimized file size.')
+            elif msg.attachments[0].size > 500000:
+                await message.channel.send('Please only send MP3/OGG files that are under 500KB. If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 async with aiohttp.ClientSession() as cs:
