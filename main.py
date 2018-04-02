@@ -24,7 +24,8 @@ class BotClient(discord.Client):
             'upload' : self.wait_for_file,
             'play' : self.play,
             'list' : self.list,
-            'delete' : self.delete
+            'delete' : self.delete,
+            'debug' : self.debug_play
         }
 
         try:
@@ -150,26 +151,26 @@ class BotClient(discord.Client):
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
         else:
-            await message.channel.send('Saving as: `{}`. Send an MP3 file <650KB or send any other message to cancel.'.format(stripped))
+            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <650KB or send any other message to cancel.'.format(stripped))
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
-            if msg.attachments == [] or not msg.attachments[0].filename.endswith('mp3'):
-                await message.channel.send('Please attach an MP3 file following the `{}upload` command. Aborted.'.format(server.prefix))
+            if msg.attachments == [] or not msg.attachments[0].filename.endswith(('mp3', 'ogg')):
+                await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
             elif msg.attachments[0].size > 650000:
-                await message.channel.send('Please only send MP3 files that are under 650KB.')
+                await message.channel.send('Please only send MP3/OGG files that are under 650KB. If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 async with aiohttp.ClientSession() as cs:
                     async with cs.get(msg.attachments[0].url) as request:
                         mime = magic.from_buffer(await request.read(), mime=True)
 
-                if mime == 'audio/mpeg':
+                if mime in ['audio/mpeg', 'audio/ogg']:
                     server.sounds[stripped] = msg.attachments[0].url
                     await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
                 else:
-                    await message.channel.send('Nice try. Please only upload MP3s. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
+                    await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
 
 
     async def play(self, message, stripped):
@@ -195,6 +196,18 @@ class BotClient(discord.Client):
                 voice.stop()
 
             voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]))
+
+
+    async def debug_play(self, message, stripped):
+        try:
+            voice = await message.author.voice.channel.connect()
+        except discord.errors.ClientException:
+            voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
+
+        if voice.is_playing():
+            voice.stop()
+
+        voice.play(discord.FFmpegPCMAudio(stripped))
 
 
     async def list(self, message, stripped):
