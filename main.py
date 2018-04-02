@@ -1,12 +1,13 @@
 from server_data import ServerData
 from ctypes.util import find_library
-import discord
+import discord ## pip3 install git+...
 import sys
 import os
-import msgpack
+import msgpack ## pip3 install msgpack
 import zlib
-import aiohttp
+import aiohttp ## pip3 install aiohttp
 import io
+import magic ## pip3 install python-magic
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -155,11 +156,20 @@ class BotClient(discord.Client):
 
             if msg.attachments == [] or not msg.attachments[0].filename.endswith('mp3'):
                 await message.channel.send('Please attach an MP3 file following the `{}upload` command. Aborted.'.format(server.prefix))
+
             elif msg.attachments[0].size > 650000:
                 await message.channel.send('Please only send MP3 files that are under 650KB.')
+
             else:
-                server.sounds[stripped] = msg.attachments[0].url
-                await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
+                async with aiohttp.ClientSession() as cs:
+                    async with cs.get(msg.attachments[0].url) as request:
+                        mime = magic.from_buffer(await request.read(), mime=True)
+
+                if mime == 'audio/mpeg':
+                    server.sounds[stripped] = msg.attachments[0].url
+                    await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
+                else:
+                    await message.channel.send('Nice try. Please only upload MP3s. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
 
 
     async def play(self, message, stripped):
