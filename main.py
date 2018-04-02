@@ -62,6 +62,40 @@ class BotClient(discord.Client):
         self.data = [d for d in self.data if d.id != guild.id]
 
 
+    async def on_reaction_add(self, reaction, user):
+        if reaction.message.guild is None:
+            pass
+
+        if reaction.message.author == self.user:
+            if isinstance(reaction.emoji, discord.Emoji):
+                for stripped, data in self.get_server(reaction.message.guild).sounds.items():
+                    if data['emoji'] == reaction.emoji.id:
+                        break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
+                else:
+                    return
+
+            else:
+                for stripped, data in self.get_server(reaction.message.guild).sounds.items():
+                    if data['emoji'] == reaction.emoji:
+                        break
+                else:
+                    return
+
+            # method continues here
+            try:
+                voice = await user.voice.channel.connect()
+            except discord.errors.ClientException:
+                voice = [v for v in self.voice_clients if v.channel.guild == reaction.message.guild][0]
+                if voice.channel != user.voice.channel:
+                    await voice.disconnect()
+                    voice = await user.voice.channel.connect()
+
+            if voice.is_playing():
+                voice.stop()
+
+            voice.play(discord.FFmpegPCMAudio(data['url']))
+
+
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content == None:
@@ -138,6 +172,8 @@ class BotClient(discord.Client):
 
 `?delete <name>` : delete a sound
 
+`?stop` : disconnect the bot from voice
+
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
         )
@@ -199,8 +235,18 @@ All commands can be prefixed with a mention, e.g `@{} help`
                         mime = magic.from_buffer(await request.read(), mime=True)
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
-                    server.sounds[stripped] = msg.attachments[0].url
-                    await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
+                    server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
+                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 120 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
+
+                    reaction, _ = await client.wait_for('reaction_add', timeout=30, check=lambda r, u: r.message.id == response.id and u == message.author)
+
+                    if isinstance(reaction.emoji, discord.Emoji):
+                        server.sounds[stripped]['emoji'] = reaction.emoji.id
+                    else:
+                        server.sounds[stripped]['emoji'] = reaction.emoji
+
+                    await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
+
                 else:
                     await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
 
@@ -230,7 +276,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
             if voice.is_playing():
                 voice.stop()
 
-            voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]))
+            voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]['url']))
 
 
     async def stop(self, message, stripped):
