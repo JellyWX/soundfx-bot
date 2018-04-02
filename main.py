@@ -27,7 +27,8 @@ class BotClient(discord.Client):
             'play' : self.play,
             'list' : self.list,
             'delete' : self.delete,
-            'debug' : self.debug_play
+            'debug' : self.debug_play,
+            'stop' : self.stop
         }
 
         try:
@@ -230,6 +231,16 @@ All commands can be prefixed with a mention, e.g `@{} help`
                 voice.stop()
 
             voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]))
+
+
+    async def stop(self, message, stripped):
+        server = self.get_server(message.guild)
+
+        voice = [v for v in self.voice_clients if v.channel.guild == message.guild]
+        if len(voice) == 0:
+            await message.channel.send('Not connected to a VC!')
+        else:
+            await voice[0].disconnect()
 
 
     async def debug_play(self, message, stripped):
