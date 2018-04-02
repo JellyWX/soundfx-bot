@@ -173,7 +173,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         server = self.get_server(message.guild)
 
         if len(server.sounds) >= 15 and stripped not in server.sounds.keys():
-            await message.channel.send('Sorry, but the maximum is 15 sounds per server. You can either overwrite an existing sound name or use `{}delete` to remove a sound.')
+            await message.channel.send('Sorry, but the maximum is 15 sounds per server. You can either overwrite an existing sound name or use `{}delete` to remove a sound.'.format(server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound.')
