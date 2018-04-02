@@ -213,6 +213,9 @@ class BotClient(discord.Client):
                 voice = await message.author.voice.channel.connect()
             except discord.errors.ClientException:
                 voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
+                if voice.channel != message.author.voice.channel:
+                    await voice.disconnect()
+                    voice = await message.author.voice.channel.connect()
 
             if voice.is_playing():
                 voice.stop()
