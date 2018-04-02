@@ -199,7 +199,7 @@ class BotClient(discord.Client):
 
         if stripped in server.sounds.keys():
             del server.sounds[stripped]
-            await message.channel.send('Deleted {}. You have used {}/15 sounds.'.format(stripped, len(server.sounds)))
+            await message.channel.send('Deleted `{}`. You have used {}/15 sounds.'.format(stripped, len(server.sounds)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
