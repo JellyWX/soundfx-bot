@@ -37,12 +37,6 @@ class BotClient(discord.Client):
         except FileNotFoundError:
             pass
 
-        try:
-            open('strings', 'r').close()
-        except FileNotFoundError:
-            print('Strings file not present. Exiting...')
-            sys.exit()
-
 
     async def on_ready(self):
         discord.opus.load_opus(find_library('opus'))
@@ -79,9 +73,6 @@ class BotClient(discord.Client):
                 'sounds' : {}
                 }
             ))
-
-        with open('strings', 'r') as f:
-            self.strings = f.read().split('[split]')
 
         if await self.get_cmd(message):
             with open('data.mp', 'wb') as f:
@@ -130,12 +121,30 @@ class BotClient(discord.Client):
 
 
     async def help(self, message, stripped):
-        embed = discord.Embed(description=self.strings[1])
+        embed = discord.Embed(title='HELP', description=
+        '''
+`?help` : view this page
+
+`?info` : view the info page
+
+`?prefix <new prefix>` : change the prefix
+
+`?upload <name>` : upload an MP3 or OGG to the name
+
+`?play <name>` : play back a saved sound
+
+`?list` : view all sounds saved
+
+`?delete <name>` : delete a sound
+
+All commands can be prefixed with a mention, e.g `@{} help`
+        '''.format(self.user.name)
+        )
         await message.channel.send(embed=embed)
 
 
     async def info(self, message, stripped):
-        em = discord.Embed(title='**INFO**',description=
+        em = discord.Embed(title='INFO', description=
         '''\u200B
   Default prefix: `?`
   Reset prefix: `@{user} prefix ?`
