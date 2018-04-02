@@ -69,7 +69,7 @@ class BotClient(discord.Client):
         if reaction.message.author == self.user:
             if isinstance(reaction.emoji, discord.Emoji):
                 for stripped, data in self.get_server(reaction.message.guild).sounds.items():
-                    if data['emoji'] == reaction.emoji.id:
+                    if (not isinstance(data['emoji'], str)) and data['emoji'][1] == reaction.emoji.id:
                         break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
                 else:
                     return
@@ -238,10 +238,16 @@ All commands can be prefixed with a mention, e.g `@{} help`
                     server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 120 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
-                    reaction, _ = await client.wait_for('reaction_add', timeout=30, check=lambda r, u: r.message.id == response.id and u == message.author)
+                    try:
+                        reaction, _ = await client.wait_for('reaction_add', timeout=120, check=lambda r, u: r.message.id == response.id and u == message.author)
+                    except:
+                        pass
 
                     if isinstance(reaction.emoji, discord.Emoji):
-                        server.sounds[stripped]['emoji'] = reaction.emoji.id
+                        if reaction.emoji.animated:
+                            server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
+                        else:
+                            server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
                     else:
                         server.sounds[stripped]['emoji'] = reaction.emoji
 
@@ -304,7 +310,19 @@ All commands can be prefixed with a mention, e.g `@{} help`
     async def list(self, message, stripped):
         server = self.get_server(message.guild)
 
-        await message.channel.send('All sounds on server: {}'.format(', '.join(server.sounds.keys())))
+        strings = []
+        for name, data in server.sounds.items():
+            string = name
+            if data['emoji'] is None:
+                continue
+            elif isinstance(data['emoji'], str):
+                string += ' ({})'.format(data['emoji'])
+            else:
+                string += ' (<:{0}:{1}>)'.format(*data['emoji'])
+
+            strings.append(string)
+
+        await message.channel.send('All sounds on server: {}'.format(', '.join(strings)))
 
 
     async def delete(self, message, stripped):
