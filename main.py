@@ -244,7 +244,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Sorry, but the maximum is 15 sounds per server. You can either overwrite an existing sound name or use `{}delete` to remove a sound.'.format(server.prefix))
 
         elif stripped == '':
-            await message.channel.send('Please provide a name for your sound.')
+            await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
         elif len(stripped) > 20:
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
