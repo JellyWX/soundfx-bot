@@ -29,7 +29,9 @@ class BotClient(discord.Client):
             'list' : self.list,
             'delete' : self.delete,
             'debug' : self.debug_play,
-            'stop' : self.stop
+            'stop' : self.stop,
+            'link' : self.link,
+            'unlink' : self.unlink
         }
 
         try:
@@ -340,13 +342,37 @@ All commands can be prefixed with a mention, e.g `@{} help`
         server = self.get_server(message.guild)
         stripped = stripped.lower()
 
+        if stripped == '':
+            await message.channel.send('Please provide the name of the sound you wish to link to an emoji (e.g `?link HEADHUNTER`)')
+
+        elif stripped in server.sounds.keys():
+            response = await message.channel.send('Found sound. Please react to this message with the emoji you wish to use!')
+
+            try:
+                reaction, _ = await client.wait_for('reaction_add', timeout=120, check=lambda r, u: r.message.id == response.id and u == message.author)
+            except:
+                pass
+
+            if isinstance(reaction.emoji, discord.Emoji):
+                if reaction.emoji.animated:
+                    server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
+                else:
+                    server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
+            else:
+                server.sounds[stripped]['emoji'] = reaction.emoji
+
+            await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
+
+        else:
+            await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
+
 
     async def unlink(self, message, stripped):
         server = self.get_server(message.guild)
         stripped = stripped.lower()
 
         if stripped == '':
-            await message.channel.send('Please provide the name of the sound you wish to unlink from its emoji')
+            await message.channel.send('Please provide the name of the sound you wish to unlink from its emoji (e.g `?unlink ULTRAKILL`)')
 
         elif stripped in server.sounds.keys():
             server.sounds[stripped]['emoji'] = None
