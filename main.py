@@ -192,6 +192,8 @@ class BotClient(discord.Client):
 
 `?unlink <name>` : unlink a sound-reaction pair
 
+`?soundboard` : pull up all sounds with reaction pairs
+
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
         )
@@ -415,17 +417,14 @@ All commands can be prefixed with a mention, e.g `@{} help`
         emojis = []
 
         for name, data in server.sounds.items():
-            string = '`{}`'.format(name)
             if data['emoji'] is None:
                 pass
             elif isinstance(data['emoji'], str):
-                string += ' : {}'.format(data['emoji'])
+                strings.append('`{}` : {}'.format(name, data['emoji']))
                 emojis.append(data['emoji'])
             else:
-                string += ' : <:{0}:{1}>'.format(*data['emoji'])
+                strings.append('`{}` : <:{}:{}>'.format(name, *data['emoji']))
                 emojis.append(self.get_emoji(data['emoji'][1]))
-
-            strings.append(string)
 
         m = await message.channel.send(embed=discord.Embed(description='\n\n'.join(strings)))
         for e in emojis:
