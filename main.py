@@ -118,9 +118,13 @@ class BotClient(discord.Client):
                 }
             ))
 
-        if await self.get_cmd(message):
-            with open('data.mp', 'wb') as f:
-                f.write(zlib.compress(msgpack.packb([d.__dict__ for d in self.data])))
+        try:
+            if await self.get_cmd(message):
+                with open('data.mp', 'wb') as f:
+                    f.write(zlib.compress(msgpack.packb([d.__dict__ for d in self.data])))
+        except Exception as e:
+            print(e)
+            await message.channel.send('Internal exception detected in command, {}'.format(e))
 
 
     async def get_cmd(self, message):
