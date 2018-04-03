@@ -88,6 +88,9 @@ class BotClient(discord.Client):
                     return
 
             # method continues here
+            await reaction.message.remove_reaction(reaction, user)
+            await reaction.message.add_reaction(reaction.emoji)
+
             try:
                 voice = await user.voice.channel.connect()
             except discord.errors.ClientException:
