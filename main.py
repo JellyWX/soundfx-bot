@@ -69,13 +69,13 @@ class BotClient(discord.Client):
         if reaction.message.guild is None:
             return
 
-        if user.bot:
+        if user.bot or user.voice is None:
             return
 
         if reaction.message.author == self.user:
             if isinstance(reaction.emoji, discord.Emoji):
                 for stripped, data in self.get_server(reaction.message.guild).sounds.items():
-                    if (not isinstance(data['emoji'], str)) and data['emoji'][1] == reaction.emoji.id:
+                    if data['emoji'] is not None and (not isinstance(data['emoji'], str)) and data['emoji'][1] == reaction.emoji.id:
                         break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
                 else:
                     return
