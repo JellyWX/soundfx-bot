@@ -18,6 +18,7 @@ class BotClient(discord.Client):
         self.get_server = lambda x: [d for d in self.data if d.id == x.id][0]
 
         self.data = []
+        self.color = 0xff3838
 
         self.commands = {
             'ping' : self.ping,
@@ -170,7 +171,7 @@ class BotClient(discord.Client):
 
 
     async def help(self, message, stripped):
-        embed = discord.Embed(title='HELP', description=
+        embed = discord.Embed(title='HELP', color=self.color, description=
         '''
 `?help` : view this page
 
@@ -201,7 +202,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
 
     async def info(self, message, stripped):
-        em = discord.Embed(title='INFO', description=
+        em = discord.Embed(title='INFO', color=self.color, description=
         '''\u200B
   Default prefix: `?`
   Reset prefix: `@{user} prefix ?`
@@ -426,7 +427,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
                 strings.append('`{}` : <:{}:{}>'.format(name, *data['emoji']))
                 emojis.append(self.get_emoji(data['emoji'][1]))
 
-        m = await message.channel.send(embed=discord.Embed(description='\n\n'.join(strings)))
+        m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
         for e in emojis:
             await m.add_reaction(e)
 
