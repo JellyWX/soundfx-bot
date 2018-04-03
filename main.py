@@ -31,7 +31,8 @@ class BotClient(discord.Client):
             'debug' : self.debug_play,
             'stop' : self.stop,
             'link' : self.link,
-            'unlink' : self.unlink
+            'unlink' : self.unlink,
+            'soundboard' : self.soundboard
         }
 
         try:
@@ -405,6 +406,12 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Deleted `{}`. You have used {}/15 sounds.'.format(stripped, len(server.sounds)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+
+
+    async def soundboard(self, message, stripped):
+        server = self.get_server(message.guild)
+
+        m = await message.channel.send()
 
 
 try: ## token grabbing code
