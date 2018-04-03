@@ -10,6 +10,7 @@ import zlib
 import aiohttp ## pip3 install aiohttp
 import io
 import magic ## pip3 install python-magic
+import asyncio
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -205,6 +206,16 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.add_reaction('📬')
 
 
+    async def cleanup(self):
+        await self.wait_until_ready()
+        while not client.is_closed():
+            for vc in self.voice_clients:
+                if len([m for m in vc.channel.members if not m.bot]) == 0:
+                    await vc.disconnect()
+
+            await asyncio.sleep(15)
+
+
     async def wait_for_file(self, message, stripped):
         stripped = stripped.lower()
         server = self.get_server(message.guild)
@@ -314,7 +325,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         for name, data in server.sounds.items():
             string = name
             if data['emoji'] is None:
-                continue
+                pass
             elif isinstance(data['emoji'], str):
                 string += ' ({})'.format(data['emoji'])
             else:
@@ -323,6 +334,26 @@ All commands can be prefixed with a mention, e.g `@{} help`
             strings.append(string)
 
         await message.channel.send('All sounds on server: {}'.format(', '.join(strings)))
+
+
+    async def link(self, message, stripped):
+        server = self.get_server(message.guild)
+        stripped = stripped.lower()
+
+
+    async def unlink(self, message, stripped):
+        server = self.get_server(message.guild)
+        stripped = stripped.lower()
+
+        if stripped == '':
+            await message.channel.send('Please provide the name of the sound you wish to unlink from its emoji')
+
+        elif stripped in server.sounds.keys():
+            server.sounds[stripped]['emoji'] = None
+            await message.channel.send('Unlinked `{}`'.format(stripped))
+
+        else:
+            await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
 
 
     async def delete(self, message, stripped):
@@ -345,4 +376,5 @@ except:
     sys.exit(-1)
 
 client = BotClient()
+client.loop.create_task(client.cleanup())
 client.run(token)
