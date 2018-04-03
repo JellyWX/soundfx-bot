@@ -273,16 +273,16 @@ All commands can be prefixed with a mention, e.g `@{} help`
                         reaction, _ = await client.wait_for('reaction_add', timeout=120, check=lambda r, u: r.message.id == response.id and u == message.author)
                     except:
                         pass
-
-                    if isinstance(reaction.emoji, discord.Emoji):
-                        if reaction.emoji.animated:
-                            server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
-                        else:
-                            server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
                     else:
-                        server.sounds[stripped]['emoji'] = reaction.emoji
+                        if isinstance(reaction.emoji, discord.Emoji):
+                            if reaction.emoji.animated:
+                                server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
+                            else:
+                                server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
+                        else:
+                            server.sounds[stripped]['emoji'] = reaction.emoji
 
-                    await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
+                        await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
 
                 else:
                     await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
