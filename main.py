@@ -67,7 +67,10 @@ class BotClient(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         if reaction.message.guild is None:
-            pass
+            return
+
+        if user.bot:
+            return
 
         if reaction.message.author == self.user:
             if isinstance(reaction.emoji, discord.Emoji):
