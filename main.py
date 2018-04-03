@@ -411,7 +411,25 @@ All commands can be prefixed with a mention, e.g `@{} help`
     async def soundboard(self, message, stripped):
         server = self.get_server(message.guild)
 
-        m = await message.channel.send()
+        strings = []
+        emojis = []
+
+        for name, data in server.sounds.items():
+            string = '`{}`'.format(name)
+            if data['emoji'] is None:
+                pass
+            elif isinstance(data['emoji'], str):
+                string += ' : {}'.format(data['emoji'])
+                emojis.append(data['emoji'])
+            else:
+                string += ' : <:{0}:{1}>'.format(*data['emoji'])
+                emojis.append(self.get_emoji(data['emoji'][1]))
+
+            strings.append(string)
+
+        m = await message.channel.send(embed=discord.Embed(description='\n\n'.join(strings)))
+        for e in emojis:
+            await m.add_reaction(e)
 
 
 try: ## token grabbing code
