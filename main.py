@@ -187,6 +187,10 @@ class BotClient(discord.Client):
 
 `?stop` : disconnect the bot from voice
 
+`?link <name>` : link a reaction to a sound
+
+`?unlink <name>` : unlink a sound-reaction pair
+
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
         )
