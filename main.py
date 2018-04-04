@@ -11,6 +11,8 @@ import aiohttp ## pip3 install aiohttp
 import io
 import magic ## pip3 install python-magic
 import asyncio
+import json
+
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -33,7 +35,8 @@ class BotClient(discord.Client):
             'stop' : self.stop,
             'link' : self.link,
             'unlink' : self.unlink,
-            'soundboard' : self.soundboard
+            'soundboard' : self.soundboard,
+            'data' : self.get_data
         }
 
         try:
@@ -123,6 +126,7 @@ class BotClient(discord.Client):
         try:
             if await self.get_cmd(message):
                 with open('data.mp', 'wb') as f:
+                    print('data stored')
                     f.write(zlib.compress(msgpack.packb([d.__dict__ for d in self.data])))
         except Exception as e:
             print(e)
@@ -218,6 +222,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
+
+  In accordance with data protection, we only store the bare necessities. To view data stored about your server, you can run `?data`
         '''.format(user=self.user.name, p=self.get_server(message.guild).prefix, sloc=sloccount_py('.'))
         )
 
@@ -267,10 +273,10 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
                     server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
-                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 120 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
+                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 30 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
                     try:
-                        reaction, _ = await client.wait_for('reaction_add', timeout=120, check=lambda r, u: r.message.id == response.id and u == message.author)
+                        reaction, _ = await client.wait_for('reaction_add', timeout=30, check=lambda r, u: r.message.id == response.id and u == message.author)
                     except:
                         pass
                     else:
@@ -430,6 +436,17 @@ All commands can be prefixed with a mention, e.g `@{} help`
         m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
         for e in emojis:
             await m.add_reaction(e)
+
+
+    async def get_data(self, message, stripped):
+        server = self.get_server(message.guild)
+
+        with open('temp.json', 'w') as f:
+            json.dump(server.__dict__, f)
+
+        f = open('temp.json', 'r')
+        await message.channel.send('Data has been converted to JSON format.', file=discord.File(f, 'data.json'))
+        f.close()
 
 
 try: ## token grabbing code
