@@ -39,12 +39,43 @@ class BotClient(discord.Client):
             'data' : self.get_data
         }
 
+        with open('tokens.json', 'r') as f:
+            self.tokens = json.load(f)
+
         try:
             with open('data.mp', 'rb') as f:
                 for d in msgpack.unpackb(zlib.decompress(f.read()), encoding='utf8'):
                     self.data.append(ServerData(**d))
         except FileNotFoundError:
             pass
+
+
+    async def send(self):
+        guild_count = len(self.guilds)
+        member_count = len([x for x in self.get_all_members()])
+
+        if self.tokens['discordbots']:
+
+            session = aiohttp.ClientSession()
+            dump = json.dumps({
+                'server_count': len(client.guilds)
+            })
+
+            head = {
+                'authorization': self.tokens['discordbots'],
+                'content-type' : 'application/json'
+            }
+
+            url = 'https://discordbots.org/api/bots/stats'
+            async with session.post(url, data=dump, headers=head) as resp:
+                print('returned {0.status} for {1}'.format(resp, dump))
+
+            session.close()
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post('https://api.fusiondiscordbots.com/{}/'.format(self.user.id), data={'token' : self.tokens['fusion'], 'guilds' : guild_count, 'members' : member_count}) as resp:
+                print('returned {0.status} from api.fusiondiscordbots.com'.format(resp))
+
 
 
     async def on_ready(self):
@@ -64,10 +95,12 @@ class BotClient(discord.Client):
             'sounds' : {}
             }
         ))
+        await self.send()
 
 
     async def on_guild_remove(self, guild):
         self.data = [d for d in self.data if d.id != guild.id]
+        await self.send()
 
 
     async def on_reaction_add(self, reaction, user):
@@ -449,14 +482,6 @@ All commands can be prefixed with a mention, e.g `@{} help`
         f.close()
 
 
-try: ## token grabbing code
-    with open('token','r') as token_f:
-        token = token_f.read().strip('\n')
-
-except:
-    print('no token provided')
-    sys.exit(-1)
-
 client = BotClient()
 client.loop.create_task(client.cleanup())
-client.run(token)
+client.run(client.tokens['bot'])
