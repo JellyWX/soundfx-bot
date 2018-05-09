@@ -22,6 +22,8 @@ class BotClient(discord.Client):
         self.data = []
         self.color = 0xff3838
 
+        self.MAX_SOUNDS = 10
+
         self.commands = {
             'ping' : self.ping,
             'help' : self.help,
@@ -55,7 +57,6 @@ class BotClient(discord.Client):
 
 
     async def get_sounds(self, guild):
-        base = 14
         extra = 0
 
         patreon_server = self.get_guild(self.settings['patreon_server'])
@@ -70,7 +71,7 @@ class BotClient(discord.Client):
             if member.id in voters:
                 extra += 2
 
-        return base + extra
+        return self.MAX_SOUNDS + extra
 
 
     async def get_voters(self):
@@ -321,7 +322,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         server = self.get_server(message.guild)
 
         if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
-            await message.channel.send('Sorry, but the maximum is 14 sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(await self.get_sounds(message.guild) - 14, prefix=server.prefix))
+            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
