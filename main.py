@@ -36,11 +36,15 @@ class BotClient(discord.Client):
             'link' : self.link,
             'unlink' : self.unlink,
             'soundboard' : self.soundboard,
-            'data' : self.get_data
+            'data' : self.get_data,
+            'more' : self.more
         }
 
         with open('tokens.json', 'r') as f:
             self.tokens = json.load(f)
+
+        with open('settings.json', 'r') as f:
+            self.settings = json.load(f)
 
         try:
             with open('data.mp', 'rb') as f:
@@ -48,6 +52,31 @@ class BotClient(discord.Client):
                     self.data.append(ServerData(**d))
         except FileNotFoundError:
             pass
+
+
+    async def get_sounds(self, guild):
+        base = 14
+        extra = 0
+
+        patreon_server = self.get_guild(self.settings['patreon_server'])
+        members = [p.id for p in patreon_server.members if not p.bot]
+
+        voters = await self.get_voters()
+
+        for member in guild.members:
+            if member.id in members:
+                extra += 1
+
+            if member.id in voters:
+                extra += 2
+
+        return base + extra
+
+
+    async def get_voters(self):
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://discordbots.org/api/bots/votes', headers={'authorization' : self.tokens['discordbots'], 'content-type' : 'application/json'}) as resp:
+                return [int(x['id']) for x in json.loads(await resp.text())]
 
 
     async def send(self):
@@ -75,7 +104,6 @@ class BotClient(discord.Client):
         async with aiohttp.ClientSession() as session:
             async with session.post('https://api.fusiondiscordbots.com/{}/'.format(self.user.id), data={'token' : self.tokens['fusion'], 'guilds' : guild_count, 'members' : member_count}) as resp:
                 print('returned {0.status} from api.fusiondiscordbots.com'.format(resp))
-
 
 
     async def on_ready(self):
@@ -247,7 +275,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
   **Welcome to SFX!**
   Developer: <@203532103185465344>
-  Find me on https://discord.gg/WQVaYmT and on https://github.com/JellyWX :)
+  Find me on https://discord.gg/SmCPXn2 and on https://github.com/JellyWX :)
 
   Framework: `discord.py`
   Total SᵒᵘʳᶜᵉLᶦⁿᵉˢOᶠCᵒᵈᵉ: {sloc} (100% Python)
@@ -265,6 +293,19 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.add_reaction('📬')
 
 
+    async def more(self, message, stripped):
+        em = discord.Embed(title='MORE', description=
+        '''
+2 ways you can get more sounds for your Discord server:
+
+    - Join our server to keep up on the latest! https://discord.gg/SmCPXn2 You will get **one** extra sound for each member that joins the server
+
+    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
+        ''')
+
+        await message.channel.send(embed=em)
+
+
     async def cleanup(self):
         await self.wait_until_ready()
         while not client.is_closed():
@@ -279,8 +320,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
         stripped = stripped.lower()
         server = self.get_server(message.guild)
 
-        if len(server.sounds) >= 15 and stripped not in server.sounds.keys():
-            await message.channel.send('Sorry, but the maximum is 15 sounds per server. You can either overwrite an existing sound name or use `{}delete` to remove a sound.'.format(server.prefix))
+        if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
+            await message.channel.send('Sorry, but the maximum is 14 sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
@@ -445,7 +486,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
         if stripped in server.sounds.keys():
             del server.sounds[stripped]
-            await message.channel.send('Deleted `{}`. You have used {}/15 sounds.'.format(stripped, len(server.sounds)))
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(server.sounds), await self.get_sounds(message.guild)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
