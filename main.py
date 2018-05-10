@@ -366,7 +366,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
                         await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
 
                 else:
-                    await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly.')
+                    await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
 
 
     async def play(self, message, stripped):
