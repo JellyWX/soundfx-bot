@@ -366,9 +366,9 @@ All commands can be prefixed with a mention, e.g `@{} help`
                     break
             else:
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
 
-
-        elif len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
+        if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
             await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
@@ -426,8 +426,9 @@ All commands can be prefixed with a mention, e.g `@{} help`
                     break
             else:
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
 
-        elif message.author.voice is None:
+        if message.author.voice is None:
             await message.channel.send('You aren\'t in a voice channel.')
 
         elif stripped == '':
@@ -545,8 +546,9 @@ All commands can be prefixed with a mention, e.g `@{} help`
                     break
             else:
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
 
-        elif stripped in server.sounds.keys():
+        if stripped in server.sounds.keys():
             del server.sounds[stripped]
             await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(server.sounds), await self.get_sounds(message.guild)))
         else:
