@@ -39,7 +39,15 @@ class BotClient(discord.Client):
             'unlink' : self.unlink,
             'soundboard' : self.soundboard,
             'data' : self.get_data,
-            'more' : self.more
+            'more' : self.more,
+            'roles' : self.role
+        }
+
+        self.template = {
+            'id' : 0,
+            'prefix' : '?',
+            'sounds' : {},
+            'roles' : ['off']
         }
 
         with open('tokens.json', 'r') as f:
@@ -51,6 +59,11 @@ class BotClient(discord.Client):
         try:
             with open('data.mp', 'rb') as f:
                 for d in msgpack.unpackb(zlib.decompress(f.read()), encoding='utf8'):
+
+                    for key, value in self.template.items():
+                        if key not in d.keys():
+                            d[key] = value
+
                     self.data.append(ServerData(**d))
         except FileNotFoundError:
             pass
@@ -121,7 +134,8 @@ class BotClient(discord.Client):
         self.data.append(ServerData(**{
             'id' : guild.id,
             'prefix' : '?',
-            'sounds' : {}
+            'sounds' : {},
+            'roles' : ['off']
             }
         ))
         await self.send()
@@ -261,6 +275,8 @@ class BotClient(discord.Client):
 
 `?soundboard` : pull up all sounds with reaction pairs
 
+`?roles` : set the roles that can use the bot
+
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
         )
@@ -307,6 +323,29 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.channel.send(embed=em)
 
 
+    async def role(self, message, stripped):
+        if message.author.guild_permissions.manage_guild:
+            server = self.get_server(message.guild)
+
+            if stripped == '@everyone':
+                server.roles = ['off']
+
+                await message.channel.send('Role blacklisting disabled.')
+
+            elif len(message.role_mentions) > 0:
+                roles = [x.id for x in message.role_mentions]
+
+                server.roles = roles
+
+                await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
+
+            else:
+                await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
+
+        else:
+            await message.channel.send('You must have permission `Manage Server` to perform this command.')
+
+
     async def cleanup(self):
         await self.wait_until_ready()
         while not client.is_closed():
@@ -321,7 +360,15 @@ All commands can be prefixed with a mention, e.g `@{} help`
         stripped = stripped.lower()
         server = self.get_server(message.guild)
 
-        if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
+        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
+            for role in message.author.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+
+
+        elif len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
             await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
@@ -373,7 +420,14 @@ All commands can be prefixed with a mention, e.g `@{} help`
         stripped = stripped.lower()
         server = self.get_server(message.guild)
 
-        if message.author.voice is None:
+        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
+            for role in message.author.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+
+        elif message.author.voice is None:
             await message.channel.send('You aren\'t in a voice channel.')
 
         elif stripped == '':
@@ -485,7 +539,14 @@ All commands can be prefixed with a mention, e.g `@{} help`
         stripped = stripped.lower()
         server = self.get_server(message.guild)
 
-        if stripped in server.sounds.keys():
+        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
+            for role in message.author.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+
+        elif stripped in server.sounds.keys():
             del server.sounds[stripped]
             await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(server.sounds), await self.get_sounds(message.guild)))
         else:
