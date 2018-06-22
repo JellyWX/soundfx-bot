@@ -214,18 +214,23 @@ class BotClient(discord.Client):
         server = self.get_server(message.guild)
         prefix = server.prefix
 
+        command = None
+
         if message.content[0:len(prefix)] == prefix:
             command = (message.content + ' ')[len(prefix):message.content.find(' ')]
-            if command in self.commands:
-                stripped = (message.content + ' ')[message.content.find(' '):].strip()
+            stripped = (message.content + ' ')[message.content.find(' '):].strip()
+
+        elif self.user.id in map(lambda x: x.id, message.mentions) and len(message.content.split(' ')) > 1:
+            command = message.content.split(' ')[1]
+            stripped = (message.content + ' ').split(' ', 2)[-1].strip()
+
+        if command is not None:
+            if command in self.commands.keys():
                 await self.commands[command](message, stripped)
                 return True
 
-        elif self.user.id in map(lambda x: x.id, message.mentions) and len(message.content.split(' ')) > 1:
-            if message.content.split(' ')[1] in self.commands.keys():
-                stripped = (message.content + ' ').split(' ', 2)[-1].strip()
-                await self.commands[message.content.split(' ')[1]](message, stripped)
-                return True
+            elif command in server.sounds.keys():
+                await self.play(message, command)
 
         return False
 
@@ -276,6 +281,8 @@ class BotClient(discord.Client):
 `?soundboard` : pull up all sounds with reaction pairs
 
 `?roles` : set the roles that can use the bot
+
+`?<soundname>` : alternative to `?play <soundname>`
 
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
