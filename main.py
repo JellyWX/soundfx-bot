@@ -229,8 +229,8 @@ class BotClient(discord.Client):
                 await self.commands[command](message, stripped)
                 return True
 
-            elif command in server.sounds.keys():
-                await self.play(message, command)
+            elif '{} {}'.format(command, stripped).strip() in server.sounds.keys():
+                await self.play(message, '{} {}'.format(command, stripped).strip())
 
         return False
 
