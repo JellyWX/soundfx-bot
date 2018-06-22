@@ -299,7 +299,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
   **Welcome to SFX!**
   Developer: <@203532103185465344>
-  Find me on https://discord.gg/SmCPXn2 and on https://github.com/JellyWX :)
+  Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
 
   Framework: `discord.py`
   Total SᵒᵘʳᶜᵉLᶦⁿᵉˢOᶠCᵒᵈᵉ: {sloc} (100% Python)
@@ -322,7 +322,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         '''
 2 ways you can get more sounds for your Discord server:
 
-    - Join our server to keep up on the latest! https://discord.gg/SmCPXn2 You will get **one** extra sound for each member that joins the server
+    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **one** extra sound for each member that joins the server
 
     - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
         ''')
@@ -376,7 +376,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
                 return
 
         if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
-            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/SmCPXn2'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
+            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
