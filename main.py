@@ -22,7 +22,7 @@ class BotClient(discord.Client):
         self.data = []
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 10
+        self.MAX_SOUNDS = 15
 
         self.commands = {
             'ping' : self.ping,
