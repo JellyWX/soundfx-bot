@@ -403,7 +403,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
-            if msg.attachments == [] or not msg.attachments[0].filename.endswith(('mp3', 'ogg')):
+            if msg.attachments == [] or not msg.attachments[0].filename.lower().endswith(('mp3', 'ogg')):
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
             elif msg.attachments[0].size > 500000:
