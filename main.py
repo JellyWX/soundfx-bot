@@ -12,6 +12,7 @@ import io
 import magic ## pip3 install python-magic
 import asyncio
 import json
+import time
 
 
 class BotClient(discord.Client):
@@ -33,7 +34,6 @@ class BotClient(discord.Client):
             'play' : self.play,
             'list' : self.list,
             'delete' : self.delete,
-            'debug' : self.debug_play,
             'stop' : self.stop,
             'link' : self.link,
             'unlink' : self.unlink,
@@ -68,6 +68,7 @@ class BotClient(discord.Client):
         except FileNotFoundError:
             pass
 
+        self.timeouts = {}
 
     async def get_sounds(self, guild):
         try:
@@ -192,7 +193,7 @@ class BotClient(discord.Client):
 
     async def on_message(self, message):
 
-        if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content == None:
+        if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
             return
 
         if len([d for d in self.data if d.id == message.guild.id]) == 0:
@@ -229,6 +230,8 @@ class BotClient(discord.Client):
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
         if command is not None:
+            self.timeouts[message.guild.id] = time.time()
+
             if command in self.commands.keys():
                 await self.commands[command](message, stripped)
                 return True
@@ -360,8 +363,15 @@ All commands can be prefixed with a mention, e.g `@{} help`
     async def cleanup(self):
         await self.wait_until_ready()
         while not client.is_closed():
+            ids = []
+
+            for guild_id, last_time in self.timeouts.copy().items():
+                if time.time() - 300 >= last_time:
+                    ids.append(guild_id)
+                    del self.timeouts[guild_id]
+
             for vc in self.voice_clients:
-                if len([m for m in vc.channel.members if not m.bot]) == 0:
+                if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids:
                     await vc.disconnect()
 
             await asyncio.sleep(15)
@@ -475,18 +485,6 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Not connected to a VC!')
         else:
             await voice[0].disconnect()
-
-
-    async def debug_play(self, message, stripped):
-        try:
-            voice = await message.author.voice.channel.connect()
-        except discord.errors.ClientException:
-            voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
-
-        if voice.is_playing():
-            voice.stop()
-
-        voice.play(discord.FFmpegPCMAudio(stripped))
 
 
     async def list(self, message, stripped):
