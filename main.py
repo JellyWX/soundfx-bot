@@ -70,21 +70,25 @@ class BotClient(discord.Client):
 
 
     async def get_sounds(self, guild):
-        extra = 0
+        try:
+            extra = 0
 
-        patreon_server = self.get_guild(self.settings['patreon_server'])
-        members = [p.id for p in patreon_server.members if not p.bot]
+            patreon_server = self.get_guild(self.settings['patreon_server'])
+            members = [p.id for p in patreon_server.members if not p.bot]
 
-        voters = await self.get_voters()
+            voters = await self.get_voters()
 
-        for member in guild.members:
-            if member.id in members:
-                extra += 1
+            for member in guild.members:
+                if member.id in members:
+                    extra += 1
 
-            if member.id in voters:
-                extra += 2
+                if member.id in voters:
+                    extra += 2
 
-        return self.MAX_SOUNDS + extra
+            return self.MAX_SOUNDS + extra
+
+        except:
+            return self.MAX_SOUNDS
 
 
     async def get_voters(self):
@@ -420,7 +424,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
                         await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
 
                 else:
-                    await message.channel.send('Nice try. Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
+                    await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
 
 
     async def play(self, message, stripped):
@@ -445,18 +449,22 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Sound `{}` could not be found. Use `{}list` to view all sounds'.format(stripped, server.prefix))
 
         else:
-            try:
-                voice = await message.author.voice.channel.connect()
-            except discord.errors.ClientException:
-                voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
-                if voice.channel != message.author.voice.channel:
-                    await voice.disconnect()
+            if not message.author.voice.channel.permissions_for(message.guild.me).connect:
+                await message.channel.send('No permissions to connect to channel.')
+
+            else:
+                try:
                     voice = await message.author.voice.channel.connect()
+                except discord.errors.ClientException:
+                    voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
+                    if voice.channel != message.author.voice.channel:
+                        await voice.disconnect()
+                        voice = await message.author.voice.channel.connect()
 
-            if voice.is_playing():
-                voice.stop()
+                if voice.is_playing():
+                    voice.stop()
 
-            voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]['url']))
+                voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]['url']))
 
 
     async def stop(self, message, stripped):
