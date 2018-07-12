@@ -1,26 +1,21 @@
-from sloccount import sloccount_py
-from server_data import ServerData
+from models import Server, session
 
 from ctypes.util import find_library
 import discord ## pip3 install git+...
 import sys
 import os
-import msgpack ## pip3 install msgpack
-import zlib
 import aiohttp ## pip3 install aiohttp
-import io
 import magic ## pip3 install python-magic
 import asyncio
 import json
 import time
+from configparser import SafeConfigParser
 
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
-        self.get_server = lambda x: [d for d in self.data if d.id == x.id][0]
 
-        self.data = []
         self.color = 0xff3838
 
         self.MAX_SOUNDS = 15
@@ -38,43 +33,21 @@ class BotClient(discord.Client):
             'link' : self.link,
             'unlink' : self.unlink,
             'soundboard' : self.soundboard,
-            'data' : self.get_data,
             'more' : self.more,
             'roles' : self.role
         }
 
-        self.template = {
-            'id' : 0,
-            'prefix' : '?',
-            'sounds' : {},
-            'roles' : ['off']
-        }
-
-        with open('tokens.json', 'r') as f:
-            self.tokens = json.load(f)
-
-        with open('settings.json', 'r') as f:
-            self.settings = json.load(f)
-
-        try:
-            with open('data.mp', 'rb') as f:
-                for d in msgpack.unpackb(zlib.decompress(f.read()), encoding='utf8'):
-
-                    for key, value in self.template.items():
-                        if key not in d.keys():
-                            d[key] = value
-
-                    self.data.append(ServerData(**d))
-        except FileNotFoundError:
-            pass
-
         self.timeouts = {}
+
+        self.config = SafeConfigParser()
+        self.config.read('config.ini')
+
 
     async def get_sounds(self, guild):
         try:
             extra = 0
 
-            patreon_server = self.get_guild(self.settings['patreon_server'])
+            patreon_server = self.get_guild(self.config.get('DEFAULT', 'patreon_server'))
             members = [p.id for p in patreon_server.members if not p.bot]
 
             voters = await self.get_voters()
@@ -94,7 +67,7 @@ class BotClient(discord.Client):
 
     async def get_voters(self):
         async with aiohttp.ClientSession() as session:
-            async with session.get('https://discordbots.org/api/bots/votes', headers={'authorization' : self.tokens['discordbots'], 'content-type' : 'application/json'}) as resp:
+            async with session.get('https://discordbots.org/api/bots/votes', headers={'authorization' : self.config.get('tokens', 'discordbots'), 'content-type' : 'application/json'}) as resp:
                 return [int(x['id']) for x in json.loads(await resp.text())]
 
 
@@ -102,7 +75,7 @@ class BotClient(discord.Client):
         guild_count = len(self.guilds)
         member_count = len([x for x in self.get_all_members()])
 
-        if self.tokens['discordbots']:
+        if self.config.get('TOKENS', 'discordbots'):
 
             session = aiohttp.ClientSession()
             dump = json.dumps({
@@ -110,7 +83,7 @@ class BotClient(discord.Client):
             })
 
             head = {
-                'authorization': self.tokens['discordbots'],
+                'authorization': self.config.get('TOKENS', 'discordbots'),
                 'content-type' : 'application/json'
             }
 
@@ -119,10 +92,6 @@ class BotClient(discord.Client):
                 print('returned {0.status} for {1}'.format(resp, dump))
 
             session.close()
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post('https://api.fusiondiscordbots.com/{}/'.format(self.user.id), data={'token' : self.tokens['fusion'], 'guilds' : guild_count, 'members' : member_count}) as resp:
-                print('returned {0.status} from api.fusiondiscordbots.com'.format(resp))
 
 
     async def on_ready(self):
@@ -136,22 +105,40 @@ class BotClient(discord.Client):
 
 
     async def on_guild_join(self, guild):
-        self.data.append(ServerData(**{
-            'id' : guild.id,
-            'prefix' : '?',
-            'sounds' : {},
-            'roles' : ['off']
-            }
-        ))
         await self.send()
+
+        await self.welcome(guild)
 
 
     async def on_guild_remove(self, guild):
-        self.data = [d for d in self.data if d.id != guild.id]
         await self.send()
+
+        await self.cleanup
+
+
+    async def welcome(self, guild, *args):
+        if isinstance(guild, discord.Message):
+            guild = guild.guild
+
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
+                await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
+                break
+            else:
+                continue
+
+
+    async def cleanup(self, *args):
+        all_ids = [g.id for g in self.guilds]
+
+        session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
+
+        session.commit()
 
 
     async def on_reaction_add(self, reaction, user):
+        server = session.query(Server).filter_by(id=reaction.message.guild.id).first()
+
         if reaction.message.guild is None:
             return
 
@@ -160,14 +147,14 @@ class BotClient(discord.Client):
 
         if reaction.message.author == self.user:
             if isinstance(reaction.emoji, discord.Emoji):
-                for stripped, data in self.get_server(reaction.message.guild).sounds.items():
+                for stripped, data in server.sounds.items():
                     if data['emoji'] is not None and (not isinstance(data['emoji'], str)) and data['emoji'][1] == reaction.emoji.id:
                         break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
                 else:
                     return
 
             else:
-                for stripped, data in self.get_server(reaction.message.guild).sounds.items():
+                for stripped, data in server.sounds.items():
                     if data['emoji'] == reaction.emoji:
                         break
                 else:
@@ -196,19 +183,15 @@ class BotClient(discord.Client):
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
             return
 
-        if len([d for d in self.data if d.id == message.guild.id]) == 0:
-            self.data.append(ServerData(**{
-                'id' : message.guild.id,
-                'prefix' : '?',
-                'sounds' : {}
-                }
-            ))
+        if session.query(Server).filter_by(id=message.guild.id).first() is None:
+            s = Server(id=message.guild.id, prefix='?', sounds={}, roles=['off'],)
+            session.add(s)
+            session.commit()
 
         try:
             if await self.get_cmd(message):
-                with open('data.mp', 'wb') as f:
-                    print('data stored')
-                    f.write(zlib.compress(msgpack.packb([d.__dict__ for d in self.data])))
+                session.commit()
+
         except Exception as e:
             print(e)
             await message.channel.send('Internal exception detected in command, {}'.format(e))
@@ -216,7 +199,7 @@ class BotClient(discord.Client):
 
     async def get_cmd(self, message):
 
-        server = self.get_server(message.guild)
+        server = session.query(Server).filter_by(id=message.guild.id).first()
         prefix = server.prefix
 
         command = None
@@ -233,28 +216,33 @@ class BotClient(discord.Client):
             self.timeouts[message.guild.id] = time.time()
 
             if command in self.commands.keys():
-                await self.commands[command](message, stripped)
+                await self.commands[command](message, stripped, server)
                 return True
 
             elif '{} {}'.format(command, stripped).strip() in server.sounds.keys():
-                await self.play(message, '{} {}'.format(command, stripped).strip())
+                await self.play(message, '{} {}'.format(command, stripped).strip(), server)
 
         return False
 
 
-    async def change_prefix(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def change_prefix(self, message, stripped, server):
 
         if stripped:
             stripped += ' '
-            server.prefix = stripped[:stripped.find(' ')]
-            await message.channel.send('Prefix changed to {}'.format(server.prefix))
+            new = stripped[:stripped.find(' ')]
+
+            if len(new) > 5:
+                await message.channel.send('Prefix must be shorter than 5 characters')
+
+            else:
+                server.prefix = new
+                await message.channel.send('Prefix changed to {}'.format(server.prefix))
 
         else:
             await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(server.prefix))
 
 
-    async def ping(self, message, stripped):
+    async def ping(self, message, stripped, server):
         t = message.created_at.timestamp()
         e = await message.channel.send('pong')
         delta = e.created_at.timestamp() - t
@@ -262,7 +250,7 @@ class BotClient(discord.Client):
         await e.edit(content='Pong! {}ms round trip'.format(round(delta * 1000)))
 
 
-    async def help(self, message, stripped):
+    async def help(self, message, stripped, server):
         embed = discord.Embed(title='HELP', color=self.color, description=
         '''
 `?help` : view this page
@@ -297,7 +285,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.channel.send(embed=embed)
 
 
-    async def info(self, message, stripped):
+    async def info(self, message, stripped, server):
         em = discord.Embed(title='INFO', color=self.color, description=
         '''\u200B
   Default prefix: `?`
@@ -309,14 +297,11 @@ All commands can be prefixed with a mention, e.g `@{} help`
   Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
 
   Framework: `discord.py`
-  Total SᵒᵘʳᶜᵉLᶦⁿᵉˢOᶠCᵒᵈᵉ: {sloc} (100% Python)
   Hosting provider: OVH
 
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
-
-  In accordance with data protection, we only store the bare necessities. To view data stored about your server, you can run `?data`
-        '''.format(user=self.user.name, p=self.get_server(message.guild).prefix, sloc=sloccount_py('.'))
+        '''.format(user=self.user.name, p=server.prefix)
         )
 
         await message.channel.send(embed=em)
@@ -324,7 +309,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.add_reaction('📬')
 
 
-    async def more(self, message, stripped):
+    async def more(self, message, stripped, server):
         em = discord.Embed(title='MORE', description=
         '''
 2 ways you can get more sounds for your Discord server:
@@ -337,9 +322,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.channel.send(embed=em)
 
 
-    async def role(self, message, stripped):
+    async def role(self, message, stripped, server):
         if message.author.guild_permissions.manage_guild:
-            server = self.get_server(message.guild)
 
             if stripped == '@everyone':
                 server.roles = ['off']
@@ -377,9 +361,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await asyncio.sleep(15)
 
 
-    async def wait_for_file(self, message, stripped):
+    async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
-        server = self.get_server(message.guild)
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -437,9 +420,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
                     await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
 
 
-    async def play(self, message, stripped):
+    async def play(self, message, stripped, server):
         stripped = stripped.lower()
-        server = self.get_server(message.guild)
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -477,8 +459,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
                 voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]['url']))
 
 
-    async def stop(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def stop(self, message, stripped, server):
 
         voice = [v for v in self.voice_clients if v.channel.guild == message.guild]
         if len(voice) == 0:
@@ -487,8 +468,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await voice[0].disconnect()
 
 
-    async def list(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def list(self, message, stripped, server):
 
         strings = []
         for name, data in server.sounds.items():
@@ -505,8 +485,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         await message.channel.send('All sounds on server: {}'.format(', '.join(strings)))
 
 
-    async def link(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def link(self, message, stripped, server):
         stripped = stripped.lower()
 
         if stripped == '':
@@ -534,8 +513,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
 
 
-    async def unlink(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def unlink(self, message, stripped, server):
         stripped = stripped.lower()
 
         if stripped == '':
@@ -549,9 +527,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
 
 
-    async def delete(self, message, stripped):
+    async def delete(self, message, stripped, server):
         stripped = stripped.lower()
-        server = self.get_server(message.guild)
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -568,8 +545,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
 
-    async def soundboard(self, message, stripped):
-        server = self.get_server(message.guild)
+    async def soundboard(self, message, stripped, server):
 
         strings = []
         emojis = []
@@ -589,17 +565,15 @@ All commands can be prefixed with a mention, e.g `@{} help`
             await m.add_reaction(e)
 
 
-    async def get_data(self, message, stripped):
-        server = self.get_server(message.guild)
-
-        with open('temp.json', 'w') as f:
-            json.dump(server.__dict__, f)
-
-        f = open('temp.json', 'r')
-        await message.channel.send('Data has been converted to JSON format.', file=discord.File(f, 'data.json'))
-        f.close()
-
-
 client = BotClient()
-client.loop.create_task(client.cleanup())
-client.run(client.tokens['bot'])
+
+try:
+
+    client.loop.create_task(client.cleanup())
+    client.run(client.config.get('TOKENS', 'bot'))
+except Exception as e:
+    print('Error detected. Restarting in 15 seconds.')
+    print(sys.exc_info())
+    time.sleep(15)
+
+    os.execl(sys.executable, sys.executable, *sys.argv)
