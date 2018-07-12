@@ -13,7 +13,7 @@ for guild in data:
         continue
     ids.append(guild['id'])
 
-    s = Server(id=guild['id'], prefix=guild['prefix'][0:5], sounds=guild['sounds'], roles=guild['roles'])
+    s = Server(id=guild['id'], prefix=guild['prefix'][0:5], sounds=guild['sounds'], roles=guild.get('roles') or ['off'])
     session.add(s)
 
 session.commit()
