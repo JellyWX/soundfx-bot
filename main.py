@@ -113,7 +113,7 @@ class BotClient(discord.Client):
     async def on_guild_remove(self, guild):
         await self.send()
 
-        await self.cleanup
+        await self.cleanup()
 
 
     async def welcome(self, guild, *args):
