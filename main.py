@@ -227,19 +227,24 @@ class BotClient(discord.Client):
 
     async def change_prefix(self, message, stripped, server):
 
-        if stripped:
-            stripped += ' '
-            new = stripped[:stripped.find(' ')]
+        if message.author.guild_permissions.manage_guild:
 
-            if len(new) > 5:
-                await message.channel.send('Prefix must be shorter than 5 characters')
+            if stripped:
+                stripped += ' '
+                new = stripped[:stripped.find(' ')]
+
+                if len(new) > 5:
+                    await message.channel.send('Prefix must be shorter than 5 characters')
+
+                else:
+                    server.prefix = new
+                    await message.channel.send('Prefix changed to {}'.format(server.prefix))
 
             else:
-                server.prefix = new
-                await message.channel.send('Prefix changed to {}'.format(server.prefix))
+                await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(server.prefix))
 
         else:
-            await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(server.prefix))
+            await message.channel.send('Please ensure you have the `manage guild` permission to run this command.')
 
 
     async def ping(self, message, stripped, server):
