@@ -16,6 +16,8 @@ class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
+        self.voters = set()
+
         self.color = 0xff3838
 
         self.MAX_SOUNDS = 15
@@ -68,7 +70,8 @@ class BotClient(discord.Client):
     async def get_voters(self):
         async with aiohttp.ClientSession() as session:
             async with session.get('https://discordbots.org/api/bots/votes', headers={'authorization' : self.config.get('tokens', 'discordbots'), 'content-type' : 'application/json'}) as resp:
-                return [int(x['id']) for x in json.loads(await resp.text())]
+                self.voters.update([int(x['id']) for x in json.loads(await resp.text())])
+                return self.voters
 
 
     async def send(self):
