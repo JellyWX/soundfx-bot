@@ -264,6 +264,8 @@ class BotClient(discord.Client):
 
 `?info` : view the info page
 
+`?more` : view how many sounds you have
+
 `?prefix <new prefix>` : change the prefix
 
 `?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
@@ -319,12 +321,14 @@ All commands can be prefixed with a mention, e.g `@{} help`
     async def more(self, message, stripped, server):
         em = discord.Embed(title='MORE', description=
         '''
+You have {} sounds (using {})
+
 2 ways you can get more sounds for your Discord server:
 
     - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **one** extra sound for each member that joins the server
 
     - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
-        ''')
+        '''.format(await self.get_sounds(message.guild), len(server.sounds)))
 
         await message.channel.send(embed=em)
 
