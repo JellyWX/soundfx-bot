@@ -28,6 +28,14 @@ class Server(Base):
         return '<Server {}>'.format(self.id)
 
 
+class User(Base):
+    __tablename__ = 'users'
+
+    map_id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, unique=True)
+    last_vote = Column(Integer)
+
+
 engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
 Base.metadata.create_all(bind=engine)
 
