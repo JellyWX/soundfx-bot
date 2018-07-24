@@ -1,4 +1,4 @@
-from models import Server, session
+from models import Server, session, User
 
 from ctypes.util import find_library
 import discord ## pip3 install git+...
@@ -15,8 +15,6 @@ from configparser import SafeConfigParser
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
-
-        self.voters = set()
 
         self.color = 0xff3838
 
@@ -46,32 +44,22 @@ class BotClient(discord.Client):
 
 
     async def get_sounds(self, guild):
-        try:
-            extra = 0
+        extra = 0
 
-            patreon_server = self.get_guild(self.config.get('DEFAULT', 'patreon_server'))
-            members = [p.id for p in patreon_server.members if not p.bot]
+        patreon_server = self.get_guild( int(self.config.get('DEFAULT', 'patreon_server')) )
 
-            voters = await self.get_voters()
+        members = [p.id for p in patreon_server.members if not p.bot]
+        guild_members = []
 
-            for member in guild.members:
-                if member.id in members:
-                    extra += 1
+        for member in guild.members:
+            if member.id in members:
+                extra += 1
 
-                if member.id in voters:
-                    extra += 2
+            guild_members.append(member.id)
 
-            return self.MAX_SOUNDS + extra
+        extra += 2 * len(session.query(User).filter(User.id.in_(guild_members)).filter(User.last_vote + 2592000 > time.time()).all())
 
-        except:
-            return self.MAX_SOUNDS
-
-
-    async def get_voters(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://discordbots.org/api/bots/votes', headers={'authorization' : self.config.get('tokens', 'discordbots'), 'content-type' : 'application/json'}) as resp:
-                self.voters.update([int(x['id']) for x in json.loads(await resp.text())])
-                return self.voters
+        return self.MAX_SOUNDS + extra
 
 
     async def send(self):
