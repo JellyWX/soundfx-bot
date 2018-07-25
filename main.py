@@ -296,6 +296,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
   Framework: `discord.py`
   Hosting provider: OVH
 
+  There is a maximum sound limit per server. Please view this through `{p}more`
+
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
         '''.format(user=self.user.name, p=server.prefix)
