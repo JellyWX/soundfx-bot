@@ -86,7 +86,7 @@ class BotClient(discord.Client):
             async with session.post(url, data=dump, headers=head) as resp:
                 print('returned {0.status} for {1}'.format(resp, dump))
 
-            session.close()
+            await session.close()
 
 
     async def on_ready(self):
