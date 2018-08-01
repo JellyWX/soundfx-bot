@@ -101,9 +101,6 @@ ENV/
 .mypy_cache/
 
 token
-data.mp
 .DS_Store
-temp.json
-tokens.json
-settings.json
 config.ini
+SOUNDS/*

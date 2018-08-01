@@ -42,6 +42,11 @@ class BotClient(discord.Client):
         self.config = SafeConfigParser()
         self.config.read('config.ini')
 
+        self.force_download = self.config.get('DEFAULT', 'FORCE_DOWNLOAD').lower() == 'yes'
+
+        if self.force_download and 'SOUNDS' not in os.listdir():
+            os.mkdir('SOUNDS')
+
 
     async def get_sounds(self, guild):
         extra = 0
@@ -399,7 +404,19 @@ You have {} sounds (using {})
                         mime = magic.from_buffer(await request.read(), mime=True)
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
-                    server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
+
+                    if self.force_download:
+                        fn = 'SOUNDS/{}.{}'.format(msg.attachments[0].id, msg.attachments[0].url.rsplit('.', 1)[1])
+
+                        server.sounds[stripped] = {'url' : fn, 'emoji' : None}
+
+                        f = open(fn, 'wb')
+                        await msg.attachments[0].save(f)
+                        f.close()
+
+                    else:
+                        server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
+
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 30 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
                     try:
