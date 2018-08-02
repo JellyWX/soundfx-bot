@@ -44,11 +44,14 @@ class Sound(Base):
 
     id = Column( Integer, primary_key=True )
     name = Column( String(20) )
+
     url = Column( String(120) )
+    last_used = Column( Integer )
+
     emoji = Column( String(64) )
     emoji_id = Column( BigInteger )
+
     server_id = Column( BigInteger, ForeignKey('servers.id') )
-    last_used = Column( Integer )
 
 
 if passwd:

@@ -142,15 +142,16 @@ class BotClient(discord.Client):
 
         if reaction.message.author == self.user:
             if isinstance(reaction.emoji, discord.Emoji):
-                for stripped, data in server.sounds.items():
-                    if data['emoji'] is not None and (not isinstance(data['emoji'], str)) and data['emoji'][1] == reaction.emoji.id:
+                for s in server.sounds:
+                    if s.emoji is not None and s.emoji_id == reaction.emoji.id:
                         break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
                 else:
                     return
 
             else:
-                for stripped, data in server.sounds.items():
-                    if data['emoji'] == reaction.emoji:
+                for s in server.sounds:
+                    if s.emoji == reaction.emoji:
+                        print('breaking')
                         break
                 else:
                     return
@@ -170,7 +171,7 @@ class BotClient(discord.Client):
             if voice.is_playing():
                 voice.stop()
 
-            voice.play(discord.FFmpegPCMAudio(data['url']))
+            voice.play(discord.FFmpegPCMAudio(s.url))
 
 
     async def on_message(self, message):
@@ -414,7 +415,7 @@ You have {} sounds (using {})
 
                     session.add(sound)
 
-                    session.commit()
+
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
                 else:
@@ -491,10 +492,12 @@ You have {} sounds (using {})
     async def link(self, message, stripped, server):
         stripped = stripped.lower()
 
+        s = server.sounds.filter(Sound.name == stripped).first()
+
         if stripped == '':
             await message.channel.send('Please provide the name of the sound you wish to link to an emoji (e.g `?link HEADHUNTER`)')
 
-        elif stripped in server.sounds.keys():
+        elif s is not None:
             response = await message.channel.send('Found sound. Please react to this message with the emoji you wish to use!')
 
             try:
@@ -503,12 +506,15 @@ You have {} sounds (using {})
                 pass
 
             if isinstance(reaction.emoji, discord.Emoji):
+                s.emoji_id = reaction.emoji.id
+
                 if reaction.emoji.animated:
-                    server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
+                    s.emoji = 'a:' + reaction.emoji.name
                 else:
-                    server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
+                    s.emoji = reaction.emoji.name
+
             else:
-                server.sounds[stripped]['emoji'] = reaction.emoji
+                s.emoji = reaction.emoji
 
             await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
 
@@ -516,14 +522,19 @@ You have {} sounds (using {})
             await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
 
 
+
+
     async def unlink(self, message, stripped, server):
         stripped = stripped.lower()
+
+        s = server.sounds.filter(Sound.name == stripped).first()
 
         if stripped == '':
             await message.channel.send('Please provide the name of the sound you wish to unlink from its emoji (e.g `?unlink ULTRAKILL`)')
 
-        elif stripped in server.sounds.keys():
-            server.sounds[stripped]['emoji'] = None
+        elif s is not None:
+            s.emoji = None
+            s.emoji_id = None
             await message.channel.send('Unlinked `{}`'.format(stripped))
 
         else:
@@ -533,6 +544,8 @@ You have {} sounds (using {})
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
+        s = server.sounds.filter(Sound.name == stripped)
+
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
                 if role.id in server.roles:
@@ -541,9 +554,9 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if stripped in server.sounds.keys():
-            del server.sounds[stripped]
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(server.sounds), await self.get_sounds(message.guild)))
+        if s is not None:
+            s.delete()
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, server.sounds.count(), await self.get_sounds(message.guild)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
