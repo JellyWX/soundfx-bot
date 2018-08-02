@@ -215,8 +215,11 @@ class BotClient(discord.Client):
                 await self.commands[command](message, stripped, server)
                 return True
 
-            elif '{} {}'.format(command, stripped).strip() in server.sounds.keys():
-                await self.play(message, '{} {}'.format(command, stripped).strip(), server)
+            else:
+                s = server.sounds.filter(Sound.name == '{} {}'.format(command, stripped).strip()).first()
+
+                if s is not None:
+                    await self.play(message, '{} {}'.format(command, stripped).strip(), server)
 
         return False
 
