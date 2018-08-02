@@ -301,7 +301,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
   Framework: `discord.py`
   Hosting provider: OVH
 
-  There is a maximum sound limit per server. Please view this through `{p}more`
+  There is a maximum sound limit per server. You can view this through `{p}more`
 
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
@@ -378,7 +378,7 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if len(server.sounds) >= await self.get_sounds(message.guild) and stripped not in server.sounds.keys():
+        if server.sounds.count() >= await self.get_sounds(message.guild) and s is None:
             await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
@@ -388,6 +388,8 @@ You have {} sounds (using {})
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
         else:
+            s = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped).first()
+
             await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB or send any other message to cancel.'.format(stripped))
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
@@ -405,25 +407,15 @@ You have {} sounds (using {})
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
 
-                    sound = Sound(url=msg.attachments[0].url, server=server)
+                    if s is not None:
+                        s.delete()
+
+                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped)
+
                     session.add(sound)
 
-                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 30 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
-
-                    try:
-                        reaction, _ = await client.wait_for('reaction_add', timeout=30, check=lambda r, u: r.message.id == response.id and u == message.author)
-                    except:
-                        pass
-                    else:
-                        if isinstance(reaction.emoji, discord.Emoji):
-                            if reaction.emoji.animated:
-                                server.sounds[stripped]['emoji'] = ('a:' + reaction.emoji.name, reaction.emoji.id)
-                            else:
-                                server.sounds[stripped]['emoji'] = (reaction.emoji.name, reaction.emoji.id)
-                        else:
-                            server.sounds[stripped]['emoji'] = reaction.emoji
-
-                        await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
+                    session.commit()
+                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
                 else:
                     await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
@@ -431,6 +423,8 @@ You have {} sounds (using {})
 
     async def play(self, message, stripped, server):
         stripped = stripped.lower()
+
+        s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -446,7 +440,7 @@ You have {} sounds (using {})
         elif stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
-        elif stripped not in server.sounds.keys():
+        elif s is None:
             await message.channel.send('Sound `{}` could not be found. Use `{}list` to view all sounds'.format(stripped, server.prefix))
 
         else:
@@ -465,7 +459,7 @@ You have {} sounds (using {})
                 if voice.is_playing():
                     voice.stop()
 
-                voice.play(discord.FFmpegPCMAudio(server.sounds[stripped]['url']))
+                voice.play(discord.FFmpegPCMAudio(s.url))
 
 
     async def stop(self, message, stripped, server):
@@ -480,14 +474,14 @@ You have {} sounds (using {})
     async def list(self, message, stripped, server):
 
         strings = []
-        for name, data in server.sounds.items():
-            string = name
-            if data['emoji'] is None:
+        for s in server.sounds:
+            string = s.name
+            if s.emoji is None:
                 pass
-            elif isinstance(data['emoji'], str):
-                string += ' ({})'.format(data['emoji'])
+            elif isinstance(s.emoji, str):
+                string += ' ({})'.format(s.emoji)
             else:
-                string += ' (<:{0}:{1}>)'.format(*data['emoji'])
+                string += ' (<:{0}:{1}>)'.format(s.emoji, s.emoji_id)
 
             strings.append(string)
 

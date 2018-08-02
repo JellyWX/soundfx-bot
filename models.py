@@ -48,6 +48,7 @@ class Sound(Base):
     emoji = Column( String(64) )
     emoji_id = Column( BigInteger )
     server_id = Column( BigInteger, ForeignKey('servers.id') )
+    last_used = Column( Integer )
 
 
 if passwd:
