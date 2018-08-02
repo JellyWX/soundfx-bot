@@ -1,4 +1,4 @@
-from models import Server, session, User
+from models import Server, session, User, Sound
 
 from ctypes.util import find_library
 import discord ## pip3 install git+...
@@ -405,17 +405,8 @@ You have {} sounds (using {})
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
 
-                    if self.force_download:
-                        fn = 'SOUNDS/{}.{}'.format(msg.attachments[0].id, msg.attachments[0].url.rsplit('.', 1)[1])
-
-                        server.sounds[stripped] = {'url' : fn, 'emoji' : None}
-
-                        f = open(fn, 'wb')
-                        await msg.attachments[0].save(f)
-                        f.close()
-
-                    else:
-                        server.sounds[stripped] = {'url' : msg.attachments[0].url, 'emoji' : None}
+                    sound = Sound(url=msg.attachments[0].url, server=server)
+                    session.add(sound)
 
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. If you want to add a reaction binding, react to this message within 30 seconds. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 

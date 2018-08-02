@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Unicode
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
 import configparser
 
@@ -24,8 +24,8 @@ class Server(Base):
     map_id = Column(Integer, primary_key=True)
     id = Column(BigInteger, unique=True)
     prefix = Column( String(5) )
-    sounds = Column( NestedMutableJson )
     roles = Column( NestedMutableJson )
+    sounds = relationship('Sound', backref='server', lazy='dynamic')
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
@@ -37,6 +37,17 @@ class User(Base):
     map_id = Column(Integer, primary_key=True)
     id = Column(BigInteger, unique=True)
     last_vote = Column(Integer)
+
+
+class Sound(Base):
+    __tablename__ = 'sounds'
+
+    id = Column( Integer, primary_key=True )
+    name = Column( String(20) )
+    url = Column( String(120) )
+    emoji = Column( String(64) )
+    emoji_id = Column( BigInteger )
+    server_id = Column( BigInteger, ForeignKey('servers.id') )
 
 
 if passwd:
