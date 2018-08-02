@@ -180,7 +180,7 @@ class BotClient(discord.Client):
             return
 
         if session.query(Server).filter_by(id=message.guild.id).first() is None:
-            s = Server(id=message.guild.id, prefix='?', sounds={}, roles=['off'],)
+            s = Server(id=message.guild.id, prefix='?', roles=['off'])
             session.add(s)
             session.commit()
 
