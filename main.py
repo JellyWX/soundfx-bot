@@ -178,8 +178,28 @@ class BotClient(discord.Client):
             if voice.is_playing():
                 voice.stop()
 
-            voice.play(discord.FFmpegPCMAudio(s.url))
+            if self.force_download:
+                downloaded = [int(f) for f in os.listdir('SOUNDS')]
 
+                if s.id in downloaded:
+                    print('Sound cached, playing from file...')
+                    voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(s.id)))
+
+                else:
+                    voice.play(discord.FFmpegPCMAudio(s.url))
+
+                    print('Sound not cached, attempting to cache...')
+
+                    async with aiohttp.ClientSession() as csession:
+                        async with csession.get(s.url) as resp:
+                            t = await resp.read()
+                            with open('SOUNDS/{}'.format(s.id), 'wb') as f:
+                                f.write(t)
+
+            else:
+                voice.play(discord.FFmpegPCMAudio(s.url))
+
+            s.last_used = time.time()
 
     async def on_message(self, message):
 
