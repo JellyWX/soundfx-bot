@@ -578,10 +578,10 @@ You have {} sounds (using {})
             if sounds.emoji is None:
                 pass
             elif sounds.emoji_id is None:
-                strings.append('`{}` : {}'.format(name, sounds.emoji))
+                strings.append('`{}` : {}'.format(sounds.name, sounds.emoji))
                 emojis.append(sounds.emoji)
             else:
-                strings.append('`{}` : <:{}:{}>'.format(name, sounds.emoji, sounds.emoji_id))
+                strings.append('`{}` : <:{}:{}>'.format(sounds.name, sounds.emoji, sounds.emoji_id))
                 emojis.append(self.get_emoji(sounds.emoji_id))
 
         m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
