@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
@@ -58,13 +58,13 @@ class Sound(Base):
     id = Column( Integer, primary_key=True )
     name = Column( String(20) )
 
-    url = Column( String(120) )
+    url = Column( Text )
     last_used = Column( Integer )
 
     emoji = Column( String(64) )
     emoji_id = Column( BigInteger )
 
-    server_id = Column( BigInteger, ForeignKey('servers.id') )
+    server_id = Column( BigInteger, ForeignKey('_servers.id') )
 
 
 if passwd:
