@@ -577,7 +577,7 @@ You have {} sounds (using {})
         for sounds in server.sounds:
             if sounds.emoji is None:
                 pass
-            elif isinstance(data['emoji'], str):
+            elif sounds.emoji_id is None:
                 strings.append('`{}` : {}'.format(name, sounds.emoji))
                 emojis.append(sounds.emoji)
             else:
