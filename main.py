@@ -47,6 +47,8 @@ class BotClient(discord.Client):
         if self.force_download and 'SOUNDS' not in os.listdir():
             os.mkdir('SOUNDS')
 
+        self.cache_length = int(self.config.get('DEFAULT', 'CACHE_LENGTH'))
+
 
     async def get_sounds(self, guild):
         extra = 0
@@ -373,6 +375,12 @@ You have {} sounds (using {})
                 if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids:
                     await vc.disconnect()
 
+            for f in os.listdir('SOUNDS'):
+                s = session.query(Sound).filter(Sound.id == int(f)).first()
+
+                if s is None or (s.last_used is not None and s.last_used + self.cache_length <= time.time()):
+                    os.remove('SOUNDS/{}'.format(f))
+
             await asyncio.sleep(15)
 
 
@@ -489,7 +497,7 @@ You have {} sounds (using {})
                 else:
                     voice.play(discord.FFmpegPCMAudio(s.url))
 
-                s.last_time = time.time()
+                s.last_used = time.time()
 
 
     async def stop(self, message, stripped, server):
