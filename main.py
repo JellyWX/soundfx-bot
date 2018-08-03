@@ -34,7 +34,7 @@ class BotClient(discord.Client):
             'unlink' : self.unlink,
             'soundboard' : self.soundboard,
             'more' : self.more,
-            'roles' : self.role
+            'roles' : self.role,
         }
 
         self.timeouts = {}
@@ -108,7 +108,7 @@ class BotClient(discord.Client):
     async def on_guild_remove(self, guild):
         await self.send()
 
-        await self.cleanup()
+        await self.leave_cleanup()
 
 
     async def welcome(self, guild, *args):
@@ -123,10 +123,15 @@ class BotClient(discord.Client):
                 continue
 
 
-    async def cleanup(self, *args):
+    async def leave_cleanup(self, *args):
         all_ids = [g.id for g in self.guilds]
 
-        session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
+        servers = session.query(Server).filter(Server.id.notin_(all_ids))
+
+        for s in servers:
+            s.sounds.delete(synchronize_session='fetch')
+
+        servers.delete(synchronize_session='fetch')
 
         session.commit()
 
