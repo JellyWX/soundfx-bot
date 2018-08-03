@@ -354,7 +354,7 @@ You have {} sounds (using {})
     - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **one** extra sound for each member that joins the server
 
     - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
-        '''.format(await self.get_sounds(message.guild), len(server.sounds)))
+        '''.format(await self.get_sounds(message.guild), server.sounds.count()))
 
         await message.channel.send(embed=em)
 
