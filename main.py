@@ -574,15 +574,15 @@ You have {} sounds (using {})
         strings = []
         emojis = []
 
-        for name, data in server.sounds.items():
-            if data['emoji'] is None:
+        for sounds in server.sounds:
+            if sounds.emoji is None:
                 pass
             elif isinstance(data['emoji'], str):
-                strings.append('`{}` : {}'.format(name, data['emoji']))
-                emojis.append(data['emoji'])
+                strings.append('`{}` : {}'.format(name, sounds.emoji))
+                emojis.append(sounds.emoji)
             else:
-                strings.append('`{}` : <:{}:{}>'.format(name, *data['emoji']))
-                emojis.append(self.get_emoji(data['emoji'][1]))
+                strings.append('`{}` : <:{}:{}>'.format(name, sounds.emoji, sounds.emoji_id))
+                emojis.append(self.get_emoji(sounds.emoji_id))
 
         m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
         for e in emojis:
