@@ -18,8 +18,8 @@ class BotClient(discord.Client):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 20
-        self.MAX_PUBLIC_SOUNDS = 4
+        self.MAX_SOUNDS = 22
+        self.MAX_PUBLIC_SOUNDS = 8
 
         self.commands = {
             'ping' : self.ping,
@@ -264,15 +264,19 @@ class BotClient(discord.Client):
 
 `?prefix <new prefix>` : change the prefix
 
+`?roles` : set the roles that can use the bot
+
 `?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
 
 `?play <name>` : play a saved sound
 
+`?<soundname>` : alternative to `?play <soundname>`
+
+`?stop` : disconnect the bot from voice
+
 `?list` : view all sounds saved
 
 `?delete <name>` : delete a sound
-
-`?stop` : disconnect the bot from voice
 
 `?link <name>` : link a reaction to a sound
 
@@ -280,13 +284,11 @@ class BotClient(discord.Client):
 
 `?soundboard` : pull up all sounds with reaction pairs
 
-`?roles` : set the roles that can use the bot
-
-`?<soundname>` : alternative to `?play <soundname>`
-
 `?public <name>` : set a sound to public/private
 
 `?search <term>` : search for public sounds and get IDs
+
+`?new` `?popular` `?random` : find new sound effects from the Repository
 
 `?find <ID>` : play a public sound by ID
 
@@ -431,7 +433,7 @@ You have {} sounds (using {})
                     if s is not None:
                         sound.delete()
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped)
+                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, uses=0, reports=0)
 
                     session.add(sound)
 

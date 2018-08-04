@@ -47,7 +47,7 @@ class Sound(Base):
 
     url = Column( String(120) )
     last_used = Column( Integer )
-    reports = Column( Integer, default=0 )
+    uses = Column( Integer )
 
     emoji = Column( String(64) )
     emoji_id = Column( BigInteger )
@@ -55,6 +55,8 @@ class Sound(Base):
     server_id = Column( BigInteger, ForeignKey('servers.id') )
 
     public = Column( Boolean, nullable=False, default=False )
+    safe = Column( Boolean, nullable=False, default=False )
+    reports = Column( Integer )
 
 
 if passwd:
