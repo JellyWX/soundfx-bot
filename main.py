@@ -355,7 +355,10 @@ You have {} sounds (using {})
                 await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
 
             else:
-                await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
+                if server.roles[0] == 'off':
+                    await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
+                else:
+                    await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format('>, <@&'.join([str(x) for x in server.roles])))
 
         else:
             await message.channel.send('You must have permission `Manage Server` to perform this command.')
