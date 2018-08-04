@@ -19,14 +19,6 @@ depends_on = None
 def upgrade():
     op.add_column( 'sounds', sa.Column('public', sa.Boolean, nullable=False, default=False) )
 
-    """op.execute('''
-    UPDATE sounds
-    SET public = 'f'
-    '''
-    )
-
-    op.alter_column( 'sounds', 'public', nullable=False)"""
-
 
 def downgrade():
     op.drop_column('sounds', 'public')
