@@ -36,7 +36,8 @@ class BotClient(discord.Client):
             'more' : self.more,
             'roles' : self.role,
             'public' : self.public,
-            'find' : self.find
+            'find' : self.find,
+            'search' : self.search
         }
 
         self.timeouts = {}
@@ -255,8 +256,6 @@ class BotClient(discord.Client):
     async def help(self, message, stripped, server):
         embed = discord.Embed(title='HELP', color=self.color, description=
         '''
-`?help` : view this page
-
 `?info` : view the info page
 
 `?more` : view how many sounds you have
@@ -265,7 +264,7 @@ class BotClient(discord.Client):
 
 `?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
 
-`?play <name>` : play back a saved sound
+`?play <name>` : play a saved sound
 
 `?list` : view all sounds saved
 
@@ -282,6 +281,12 @@ class BotClient(discord.Client):
 `?roles` : set the roles that can use the bot
 
 `?<soundname>` : alternative to `?play <soundname>`
+
+`?public <name>` : set a sound to public
+
+`?search <term>` : search for public sounds and get IDs
+
+`?find <ID>` : play a public sound by ID
 
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
@@ -634,8 +639,8 @@ You have {} sounds (using {})
     async def find(self, message, stripped, server):
         stripped = stripped.lower()
 
-        if stripped.startswith('play:') and all([x in '0123456789' for x in stripped[5:]]):
-            id = int( stripped[5:] )
+        if all([x in '0123456789' for x in stripped]):
+            id = int( stripped )
 
             sound = session.query(Sound).get(id)
 
@@ -645,11 +650,28 @@ You have {} sounds (using {})
                 await message.channel.send('No sound found with ID {}'.format(id))
 
         else:
+            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
 
-            s = '\n'.join(['name: {}, ID: {}'.format(sound.name, sound.id) for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped)))])
-            await message.channel.send('''
-All public sounds matching filter:
-{}'''.format(s))
+
+    async def search(self, message, stripped, server):
+
+        embed = discord.Embed(title='Public sounds matching filter:')
+
+        length = 0
+
+        for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
+            if length < 1650:
+                content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+
+                embed.add_field(name=sound.name, value=content, inline=True)
+
+                length += len(content) + len(sound.name)
+
+            else:
+                embed.set_footer(text='More results were found, but removed due to size restrictions')
+                break
+
+        await message.channel.send(embed=embed)
 
 
 client = BotClient()
