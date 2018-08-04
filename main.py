@@ -612,10 +612,39 @@ You have {} sounds (using {})
 
 
     async def public(self, message, stripped, server):
-        pass
+        stripped = stripped.lower()
+
+        s = server.sounds.filter(Sound.name == stripped)
+
+        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
+            for role in message.author.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
+
+        if s is not None:
+            s.public = not s.public
+            await message.channel.send('Sound `{}` has been set to {}public.'.format(stripped, '' if s.public else 'not '))
+        else:
+            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+
 
     async def find(self, message, stripped, server):
-        pass
+        stripped = stripped.lower()
+
+        if all([x in '0123456789' for x in stripped]):
+            id = int( stripped )
+
+            sound = session.query(Sound).get(id)
+
+            await self.play_sound(message.guild, message.channel, message.author, sound, server)
+
+        else:
+
+            for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
+                print(sound.name)
 
 
 client = BotClient()
