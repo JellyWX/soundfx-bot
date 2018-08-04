@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
@@ -52,6 +52,8 @@ class Sound(Base):
     emoji_id = Column( BigInteger )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
+
+    public = Column( Boolean, nullable=False, default=False )
 
 
 if passwd:
