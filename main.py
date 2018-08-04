@@ -642,7 +642,7 @@ You have {} sounds (using {})
 
         elif s is not None:
             s.public = not s.public
-            await message.channel.send('Sound `{}` has been set to {}public.'.format(stripped, '' if s.public else 'not '))
+            await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
