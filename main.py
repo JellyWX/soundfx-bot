@@ -19,6 +19,7 @@ class BotClient(discord.Client):
         self.color = 0xff3838
 
         self.MAX_SOUNDS = 20
+        self.MAX_PUBLIC_SOUNDS = 4
 
         self.commands = {
             'ping' : self.ping,
@@ -629,7 +630,12 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if s is not None:
+        count = server.sounds.filter(Sound.public).count()
+
+        if count >= self.MAX_PUBLIC_SOUNDS and not s.public:
+            await message.channel.send('You have reached the limit of public sounds. Consider making some private again.')
+
+        elif s is not None:
             s.public = not s.public
             await message.channel.send('Sound `{}` has been set to {}public.'.format(stripped, '' if s.public else 'not '))
         else:
