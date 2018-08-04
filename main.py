@@ -11,6 +11,8 @@ import json
 import time
 from configparser import SafeConfigParser
 
+from sqlalchemy.sql.expression import func
+
 
 class BotClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -39,7 +41,10 @@ class BotClient(discord.Client):
             'public' : self.public,
             'find' : self.find,
             'search' : self.search,
-            'report' : self.report
+            'new' : self.search,
+            'popular' : self.search,
+            'random' : self.search,
+            'report' : self.report,
         }
 
         self.timeouts = {}
@@ -523,6 +528,11 @@ You have {} sounds (using {})
 
             sound.last_used = time.time()
 
+            if sound.plays is None:
+                sound.plays = 1
+            else:
+                sound.plays += 1
+
 
     async def list(self, message, stripped, server):
 
@@ -684,17 +694,45 @@ You have {} sounds (using {})
 
         length = 0
 
-        for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
-            if length < 1650:
-                content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+        if 'new' in message.content.split(' ')[0]:
+            for sound in session.query(Sound).filter(Sound.public).order_by(Sound.id.desc()):
+                if length < 1650:
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
 
-                embed.add_field(name=sound.name, value=content, inline=True)
+                    embed.add_field(name=sound.name, value=content, inline=True)
 
-                length += len(content) + len(sound.name)
+                    length += len(content) + len(sound.name)
 
-            else:
-                embed.set_footer(text='More results were found, but removed due to size restrictions')
-                break
+        elif 'popular' in message.content.split(' ')[0]:
+            for sound in session.query(Sound).filter(Sound.public).order_by(Sound.plays.desc()):
+                if length < 1650:
+                    content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
+
+                    embed.add_field(name=sound.name, value=content, inline=True)
+
+                    length += len(content) + len(sound.name)
+
+        elif 'random' in message.content.split(' ')[0]:
+            for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()):
+                if length < 1650:
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+
+                    embed.add_field(name=sound.name, value=content, inline=True)
+
+                    length += len(content) + len(sound.name)
+
+        else:
+            for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
+                if length < 1650:
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+
+                    embed.add_field(name=sound.name, value=content, inline=True)
+
+                    length += len(content) + len(sound.name)
+
+                else:
+                    embed.set_footer(text='More results were found, but removed due to size restrictions')
+                    break
 
         await message.channel.send(embed=embed)
 

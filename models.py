@@ -47,7 +47,7 @@ class Sound(Base):
 
     url = Column( String(120) )
     last_used = Column( Integer )
-    uses = Column( Integer )
+    plays = Column( Integer )
 
     emoji = Column( String(64) )
     emoji_id = Column( BigInteger )
