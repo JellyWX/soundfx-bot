@@ -35,6 +35,8 @@ class BotClient(discord.Client):
             'soundboard' : self.soundboard,
             'more' : self.more,
             'roles' : self.role,
+            'public' : self.public,
+            'find' : self.find
         }
 
         self.timeouts = {}
@@ -167,39 +169,8 @@ class BotClient(discord.Client):
             await reaction.message.remove_reaction(reaction, user)
             await reaction.message.add_reaction(reaction.emoji)
 
-            try:
-                voice = await user.voice.channel.connect()
-            except discord.errors.ClientException:
-                voice = [v for v in self.voice_clients if v.channel.guild == reaction.message.guild][0]
-                if voice.channel != user.voice.channel:
-                    await voice.disconnect()
-                    voice = await user.voice.channel.connect()
+            await self.play_sound(reaction.message.guild, reaction.message.channel, user, s, server)
 
-            if voice.is_playing():
-                voice.stop()
-
-            if self.force_download:
-                downloaded = [int(f) for f in os.listdir('SOUNDS')]
-
-                if s.id in downloaded:
-                    print('Sound cached, playing from file...')
-                    voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(s.id)))
-
-                else:
-                    voice.play(discord.FFmpegPCMAudio(s.url))
-
-                    print('Sound not cached, attempting to cache...')
-
-                    async with aiohttp.ClientSession() as csession:
-                        async with csession.get(s.url) as resp:
-                            t = await resp.read()
-                            with open('SOUNDS/{}'.format(s.id), 'wb') as f:
-                                f.write(t)
-
-            else:
-                voice.play(discord.FFmpegPCMAudio(s.url))
-
-            s.last_used = time.time()
 
     async def on_message(self, message):
 
@@ -463,61 +434,14 @@ You have {} sounds (using {})
 
         s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
 
-        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
-            for role in message.author.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
-
-        if message.author.voice is None:
-            await message.channel.send('You aren\'t in a voice channel.')
-
-        elif stripped == '':
+        if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
         elif s is None:
             await message.channel.send('Sound `{}` could not be found. Use `{}list` to view all sounds'.format(stripped, server.prefix))
 
         else:
-            if not message.author.voice.channel.permissions_for(message.guild.me).connect:
-                await message.channel.send('No permissions to connect to channel.')
-
-            else:
-                try:
-                    voice = await message.author.voice.channel.connect()
-                except discord.errors.ClientException:
-                    voice = [v for v in self.voice_clients if v.channel.guild == message.guild][0]
-                    if voice.channel != message.author.voice.channel:
-                        await voice.disconnect()
-                        voice = await message.author.voice.channel.connect()
-
-                if voice.is_playing():
-                    voice.stop()
-
-                if self.force_download:
-                    downloaded = [int(f) for f in os.listdir('SOUNDS')]
-
-                    if s.id in downloaded:
-                        print('Sound cached, playing from file...')
-                        voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(s.id)))
-
-                    else:
-                        voice.play(discord.FFmpegPCMAudio(s.url))
-
-                        print('Sound not cached, attempting to cache...')
-
-                        async with aiohttp.ClientSession() as csession:
-                            async with csession.get(s.url) as resp:
-                                t = await resp.read()
-                                with open('SOUNDS/{}'.format(s.id), 'wb') as f:
-                                    f.write(t)
-
-                else:
-                    voice.play(discord.FFmpegPCMAudio(s.url))
-
-                s.last_used = time.time()
+            await self.play_sound(message.guild, message.channel, message.author, s, server)
 
 
     async def stop(self, message, stripped, server):
@@ -527,6 +451,57 @@ You have {} sounds (using {})
             await message.channel.send('Not connected to a VC!')
         else:
             await voice[0].disconnect()
+
+
+    async def play_sound(self, guild, channel, caller, sound, server):
+        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
+            for role in caller.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
+
+        if caller.voice is None:
+            await channel.send('You aren\'t in a voice channel.')
+
+        elif not caller.voice.channel.permissions_for(guild.me).connect:
+            await channel.send('No permissions to connect to channel.')
+
+        else:
+            try:
+                voice = await caller.voice.channel.connect()
+            except discord.errors.ClientException:
+                voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
+                if voice.channel != caller.voice.channel:
+                    await voice.disconnect()
+                    voice = await caller.voice.channel.connect()
+
+            if voice.is_playing():
+                voice.stop()
+
+            if self.force_download:
+                downloaded = [int(f) for f in os.listdir('SOUNDS')]
+
+                if sound.id in downloaded:
+                    print('Sound cached, playing from file...')
+
+                else:
+                    print('Sound not cached, attempting to cache...')
+
+                    async with aiohttp.ClientSession() as csession:
+                        async with csession.get(sound.url) as resp:
+                            t = await resp.read()
+                            with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
+                                f.write(t)
+
+                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(sound.id)))
+
+            else:
+                print('Consider enabling force download in config.ini')
+                voice.play(discord.FFmpegPCMAudio(sound.url))
+
+            sound.last_used = time.time()
 
 
     async def list(self, message, stripped, server):
@@ -634,6 +609,13 @@ You have {} sounds (using {})
         m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
         for e in emojis:
             await m.add_reaction(e)
+
+
+    async def public(self, message, stripped, server):
+        pass
+
+    async def find(self, message, stripped, server):
+        pass
 
 
 client = BotClient()
