@@ -634,12 +634,15 @@ You have {} sounds (using {})
     async def find(self, message, stripped, server):
         stripped = stripped.lower()
 
-        if all([x in '0123456789' for x in stripped]):
+        if stripped.startswith('play:') and all([x in '0123456789' for x in stripped[5:]]):
             id = int( stripped )
 
             sound = session.query(Sound).get(id)
 
-            await self.play_sound(message.guild, message.channel, message.author, sound, server)
+            if sound is not None:
+                await self.play_sound(message.guild, message.channel, message.author, sound, server)
+            else:
+                await message.channel.send('No sound found with ID {}'.format(id))
 
         else:
 
