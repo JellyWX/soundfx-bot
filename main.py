@@ -614,7 +614,7 @@ You have {} sounds (using {})
     async def public(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = server.sounds.filter(Sound.name == stripped)
+        s = server.sounds.filter(Sound.name == stripped).first()
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -635,7 +635,7 @@ You have {} sounds (using {})
         stripped = stripped.lower()
 
         if stripped.startswith('play:') and all([x in '0123456789' for x in stripped[5:]]):
-            id = int( stripped )
+            id = int( stripped[5:] )
 
             sound = session.query(Sound).get(id)
 
@@ -646,8 +646,10 @@ You have {} sounds (using {})
 
         else:
 
-            for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
-                print(sound.name)
+            s = '\n'.join(['name: {}, ID: {}'.format(sound.name, sound.id) for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped)))])
+            await message.channel.send('''
+All public sounds matching filter:
+{}'''.format(s))
 
 
 client = BotClient()
