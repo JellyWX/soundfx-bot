@@ -503,7 +503,12 @@ You have {} sounds (using {})
 
                     async with aiohttp.ClientSession() as csession:
                         async with csession.get(sound.url) as resp:
+                            if resp.status != 200:
+                                await channel.send('Sound file couldn\'t be loaded. Try again later, or consider re-uploading it. This can happen if the file is deleted or permission levels change.')
+                                return
+
                             t = await resp.read()
+
                             with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
                                 f.write(t)
 
