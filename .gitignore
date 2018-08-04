@@ -104,3 +104,4 @@ token
 .DS_Store
 config.ini
 SOUNDS/*
+alembic.ini
