@@ -408,7 +408,8 @@ You have {} sounds (using {})
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
         else:
-            s = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped).first()
+            sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
+            s = sound.first()
 
             await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB or send any other message to cancel.'.format(stripped))
 
@@ -428,7 +429,7 @@ You have {} sounds (using {})
                 if mime in ['audio/mpeg', 'audio/ogg']:
 
                     if s is not None:
-                        s.delete()
+                        sound.delete()
 
                     sound = Sound(url=msg.attachments[0].url, server=server, name=stripped)
 
