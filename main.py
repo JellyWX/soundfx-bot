@@ -18,7 +18,7 @@ class BotClient(discord.Client):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 15
+        self.MAX_SOUNDS = 20
 
         self.commands = {
             'ping' : self.ping,
@@ -621,12 +621,12 @@ You have {} sounds (using {})
         strings = []
         emojis = []
 
-        for sounds in server.sounds:
-            if sounds.emoji is None:
-                pass
-            elif sounds.emoji_id is None:
+        for sounds in server.sounds.filter(Sound.emoji is not None):
+
+            if sounds.emoji_id is None:
                 strings.append('`{}` : {}'.format(sounds.name, sounds.emoji))
                 emojis.append(sounds.emoji)
+
             else:
                 strings.append('`{}` : <:{}:{}>'.format(sounds.name, sounds.emoji, sounds.emoji_id))
                 emojis.append(self.get_emoji(sounds.emoji_id))
