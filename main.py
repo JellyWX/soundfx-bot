@@ -283,7 +283,7 @@ class BotClient(discord.Client):
 
 `?<soundname>` : alternative to `?play <soundname>`
 
-`?public <name>` : set a sound to public
+`?public <name>` : set a sound to public/private
 
 `?search <term>` : search for public sounds and get IDs
 
@@ -514,7 +514,12 @@ You have {} sounds (using {})
 
         strings = []
         for s in server.sounds:
-            string = s.name
+            string = '**{}**'.format(s.name)
+            if s.public:
+                string += ' (\U0001F513)'
+            else:
+                string += ' (\U0001F510)'
+
             if s.emoji is None:
                 pass
             elif isinstance(s.emoji, str):
