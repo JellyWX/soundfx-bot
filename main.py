@@ -290,6 +290,8 @@ class BotClient(discord.Client):
 
 `?find <ID>` : play a public sound by ID
 
+`?report <ID>` : report a public sound by ID for advertising or hate
+
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
         )
@@ -654,7 +656,7 @@ You have {} sounds (using {})
         if all([x in '0123456789' for x in stripped]):
             id = int( stripped )
 
-            sound = session.query(Sound).get(id)
+            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
             if sound is not None:
                 await self.play_sound(message.guild, message.channel, message.author, sound, server)
@@ -692,7 +694,7 @@ You have {} sounds (using {})
         if all([x in '0123456789' for x in stripped]):
             id = int( stripped )
 
-            sound = session.query(Sound).get(id)
+            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
             if sound is not None:
                 if sound.reports is None:
