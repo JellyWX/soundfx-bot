@@ -38,7 +38,8 @@ class BotClient(discord.Client):
             'roles' : self.role,
             'public' : self.public,
             'find' : self.find,
-            'search' : self.search
+            'search' : self.search,
+            'report' : self.report
         }
 
         self.timeouts = {}
@@ -683,6 +684,27 @@ You have {} sounds (using {})
                 break
 
         await message.channel.send(embed=embed)
+
+
+    async def report(self, message, stripped, server):
+        stripped = stripped.lower()
+
+        if all([x in '0123456789' for x in stripped]):
+            id = int( stripped )
+
+            sound = session.query(Sound).get(id)
+
+            if sound is not None:
+                if sound.reports is None:
+                    sound.reports = 1
+                else:
+                    sound.reports += 1
+                await message.channel.send('The sound has been reported and will be reviewed. Thank you.')
+            else:
+                await message.channel.send('No sound found with ID {}'.format(id))
+
+        else:
+            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
 
 
 client = BotClient()
