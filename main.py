@@ -782,7 +782,14 @@ You have {} sounds (using {})
         user = session.query(User).filter(User.id == message.author.id).first()
         stripped = stripped.lower()
 
-        if all([x in '0123456789' for x in stripped]):
+        if stripped == '' and user.join_sound is not None:
+            user.join_sound = None
+            await message.channel.send('You have unassigned your greet sound')
+
+        elif stripped == '':
+            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+
+        elif all([x in '0123456789' for x in stripped]):
             id = int( stripped )
 
             sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
