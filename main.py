@@ -190,7 +190,7 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
             print('Creating new User')
 
-        elif before.channel is None and after.channel is not None \
+        elif before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
             await self.play_sound(member.guild, member, member, user.join_sound, server)
             print('Playing join...')
