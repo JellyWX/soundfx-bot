@@ -14,7 +14,7 @@ from configparser import SafeConfigParser
 from sqlalchemy.sql.expression import func
 
 
-class BotClient(discord.Client):
+class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
