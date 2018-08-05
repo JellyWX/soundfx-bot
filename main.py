@@ -21,7 +21,6 @@ class BotClient(discord.Client):
         self.color = 0xff3838
 
         self.MAX_SOUNDS = 22
-        self.MAX_PUBLIC_SOUNDS = 8
 
         self.commands = {
             'ping' : self.ping,
@@ -45,6 +44,7 @@ class BotClient(discord.Client):
             'popular' : self.search,
             'random' : self.search,
             'report' : self.report,
+            'greet' : self.greet
         }
 
         self.timeouts = {}
@@ -180,6 +180,27 @@ class BotClient(discord.Client):
             await self.play_sound(reaction.message.guild, reaction.message.channel, user, s, server)
 
 
+    async def on_voice_state_update(self, member, before, after):
+        user = session.query(User).filter(User.id == member.id).first()
+        server = session.query(Server).filter_by(id=member.guild.id).first()
+
+        if user is None:
+            user = User(id=member.id, last_vote=0, join_sound=None, leave_sound=None)
+            session.add(user)
+            session.commit()
+            print('Creating new User')
+
+        elif before.channel is None and after.channel is not None \
+            and user.join_sound is not None:
+            await self.play_sound(member.guild, member, member, user.join_sound, server)
+            print('Playing join...')
+
+        elif before.channel is not None and after.channel is None \
+            and user.leave_sound is not None:
+            await self.play_sound(member.guild, member, member, user.leave_sound, server)
+            print('Playing leave...')
+
+
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
@@ -298,6 +319,8 @@ class BotClient(discord.Client):
 `?find <ID>` : play a public sound by ID
 
 `?report <ID>` : report a public sound by ID for advertising or hate
+
+`?greet <ID>` : set your greeting sound (plays when you join a VC) (sound must be public)
 
 All commands can be prefixed with a mention, e.g `@{} help`
         '''.format(self.user.name)
@@ -661,10 +684,7 @@ You have {} sounds (using {})
 
         count = server.sounds.filter(Sound.public).count()
 
-        if count >= self.MAX_PUBLIC_SOUNDS and not s.public:
-            await message.channel.send('You have reached the limit of public sounds. Consider making some private again.')
-
-        elif s is not None:
+        if s is not None:
             s.public = not s.public
             await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
         else:
@@ -753,6 +773,31 @@ You have {} sounds (using {})
                 await message.channel.send('The sound has been reported and will be reviewed. Thank you.')
             else:
                 await message.channel.send('No sound found with ID {}'.format(id))
+
+        else:
+            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+
+
+    async def greet(self, message, stripped, server):
+        user = session.query(User).filter(User.id == message.author.id).first()
+        stripped = stripped.lower()
+
+        if all([x in '0123456789' for x in stripped]):
+            id = int( stripped )
+
+            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
+
+            if user is None:
+                user = User(id=message.author.id, last_vote=0, join_sound=None, leave_sound=None)
+                session.add(user)
+                session.commit()
+
+            if sound is not None:
+                user.join_sound = sound
+                await message.channel.send('Your greet sound has been set.')
+
+            else:
+                await message.channel.send('No public sound found with ID {}'.format(id))
 
         else:
             await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
