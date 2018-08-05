@@ -213,11 +213,6 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
-            print('- {} -'.format(datetime.utcnow()))
-            print(message.content)
-            print(message.author)
-            print(message.guild)
-            print('---')
             if await self.get_cmd(message):
                 session.commit()
 
@@ -227,6 +222,12 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def get_cmd(self, message):
+
+        print('- {} -'.format(datetime.utcnow()))
+        print(message.content)
+        print(message.author)
+        print(message.guild)
+        print('---')
 
         server = session.query(Server).filter_by(id=message.guild.id).first()
         prefix = server.prefix
