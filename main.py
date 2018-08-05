@@ -438,7 +438,7 @@ You have {} sounds (using {})
                     if s is not None:
                         sound.delete()
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, uses=0, reports=0)
+                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, plays=0, reports=0)
 
                     session.add(sound)
 
