@@ -223,22 +223,26 @@ class BotClient(discord.AutoShardedClient):
 
     async def get_cmd(self, message):
 
-        print('- {} -'.format(datetime.utcnow()))
-        print(message.content)
-        print(message.author)
-        print(message.guild)
-        print('---')
-
         server = session.query(Server).filter_by(id=message.guild.id).first()
         prefix = server.prefix
 
         command = None
 
         if message.content[0:len(prefix)] == prefix:
+            print('- {} -'.format(datetime.utcnow()))
+            print(message.content)
+            print(message.author)
+            print(message.guild)
+            print('---')
             command = (message.content + ' ')[len(prefix):message.content.find(' ')]
             stripped = (message.content + ' ')[message.content.find(' '):].strip()
 
         elif self.user.id in map(lambda x: x.id, message.mentions) and len(message.content.split(' ')) > 1:
+            print('- {} -'.format(datetime.utcnow()))
+            print(message.content)
+            print(message.author)
+            print(message.guild)
+            print('---')
             command = message.content.split(' ')[1]
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
