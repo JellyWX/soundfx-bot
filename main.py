@@ -10,6 +10,7 @@ import asyncio
 import json
 import time
 from configparser import SafeConfigParser
+from datetime import datetime
 
 from sqlalchemy.sql.expression import func
 
@@ -212,6 +213,11 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
+            print('- {} -'.format(datetime.utcnow()))
+            print(message.content)
+            print(message.author)
+            print(message.guild)
+            print('---')
             if await self.get_cmd(message):
                 session.commit()
 
