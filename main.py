@@ -491,8 +491,28 @@ You have {} sounds (using {})
         if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
-        elif s is None:
-            await message.channel.send('Sound `{}` could not be found. Use `{}list` to view all sounds'.format(stripped, server.prefix))
+        elif s is None: ## if none in current server by name:
+            sq = session.query(Sound).filter( Sound.public ).filter( Sound.name == stripped ).order_by( func.rand() ) ## query by name
+            s = sq.first()
+
+            if sq.count() > 1:
+
+                await message.channel.send('Mutiple sounds with name specified. Consider specifying an ID. PLaying random {} (ID {}) from {}...'.format( s.name, s.id, self.get_guild(s.server_id).name ))
+
+                await self.play_sound(message.guild, message.channel, message.author, s, server)
+
+            elif sq.count() == 0:
+
+                await message.channel.send('Sound `{}` could not be found in server or in Sound Repository by name. Use `{0}list` to view all sounds, or `{0}search` to search for public sounds. Use `{}find` to play a sound by ID'.format(stripped, server.prefix))
+
+            else:
+                await message.channel.send('Playing public sound {name} (ID {id}) from {guild}. Use `{pref}report {id}` if this sound is inappropriate'.format(
+                    name = s.name,
+                    id = s.id,
+                    guild = self.get_guild(s.server_id).name
+                    pref = server.prefix
+                    )
+                )
 
         else:
             await self.play_sound(message.guild, message.channel, message.author, s, server)
