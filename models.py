@@ -44,6 +44,9 @@ class User(Base):
     join_sound = relationship('Sound', foreign_keys=[join_sound_id])
     leave_sound = relationship('Sound', foreign_keys=[leave_sound_id])
 
+    def __repr__(self):
+        return '<User {}>'.format(self.id)
+
 
 class Sound(Base):
     __tablename__ = 'sounds'
@@ -62,6 +65,7 @@ class Sound(Base):
 
     public = Column( Boolean, nullable=False, default=False )
     safe = Column( Boolean, nullable=False, default=False )
+    locked = Column( Boolean, nullable=False, default=False)
     reports = Column( Integer )
 
 

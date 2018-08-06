@@ -45,7 +45,8 @@ class BotClient(discord.AutoShardedClient):
             'popular' : self.search,
             'random' : self.search,
             'report' : self.report,
-            'greet' : self.greet
+            'greet' : self.greet,
+            'review' : self.review
         }
 
         self.timeouts = {}
@@ -59,6 +60,8 @@ class BotClient(discord.AutoShardedClient):
             os.mkdir('SOUNDS')
 
         self.cache_length = int(self.config.get('DEFAULT', 'CACHE_LENGTH'))
+
+        self.trusted_ids = self.config.get('DEFAULT', 'TRUSTED_IDS').replace(' ', '').split(',')
 
 
     async def get_sounds(self, guild):
@@ -189,17 +192,17 @@ class BotClient(discord.AutoShardedClient):
             user = User(id=member.id, last_vote=0, join_sound=None, leave_sound=None)
             session.add(user)
             session.commit()
-            print('Creating new User')
+            print('Creating new {}'.format(str(user)))
 
         elif before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
             await self.play_sound(member.guild, member, member, user.join_sound, server)
-            print('Playing join...')
+            print('Playing join sound')
 
         elif before.channel is not None and after.channel is None \
             and user.leave_sound is not None:
             await self.play_sound(member.guild, member, member, user.leave_sound, server)
-            print('Playing leave...')
+            print('Playing leave sound')
 
 
     async def on_message(self, message):
@@ -724,6 +727,10 @@ You have {} sounds (using {})
         count = server.sounds.filter(Sound.public).count()
 
         if s is not None:
+            if s.locked:
+                await message.channel.send('This sound has been locked due to inappropriate content. Your server can still use it, but it cannot go public. If you have an issue with this, please come talk to us (in a civil manner) at our discord.')
+                return
+
             s.public = not s.public
             await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
         else:
@@ -834,6 +841,30 @@ You have {} sounds (using {})
 
         else:
             await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+
+
+    async def review(self, message, stripped, server):
+        if message.author.id not in self.trusted_ids:
+            return
+
+        s = session.query(Sound).filter(Sound.public).fiter(not Sound.safe).order_by(Sound.reports.desc())
+
+        await message.channel.send('Current sound: {} (guild: {}, reports: {}). Type \'safe\' or \'lock\' to issue justice'.format(s.name, self.get_guild(s.server_id).name, s.reports))
+        await self.play_sound(message.guild, message.channel, message.author, s, server)
+
+        m = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
+
+        if m.content == 'lock':
+            s.locked = True
+            s.public = False
+            await message.channel.send('Sound has been locked.')
+
+        elif m.content == 'safe':
+            s.safe = True
+            await message.channel.send('Sound has been set as safe.')
+
+        else:
+            await message.channel.send('Judgement postponed.')
 
 
 client = BotClient()
