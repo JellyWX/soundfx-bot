@@ -295,6 +295,8 @@ class BotClient(discord.AutoShardedClient):
     async def help(self, message, stripped, server):
         embed = discord.Embed(title='HELP', color=self.color, description=
         '''
+**This help page doesn't work on mobile.**
+
 `?info` : view the info page
 
 `?more` : view how many sounds you have
@@ -486,7 +488,11 @@ You have {} sounds (using {})
     async def play(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
+        if stripped.startswith('id:') and all( [x in '0123456789' for x in stripped[3:]] ) :
+            id = int( stripped[3:] )
+            s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
+        else:
+            s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
 
         if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
@@ -497,13 +503,13 @@ You have {} sounds (using {})
 
             if sq.count() > 1:
 
-                await message.channel.send('Mutiple sounds with name specified. Consider specifying an ID. PLaying random {} (ID {}) from {}...'.format( s.name, s.id, self.get_guild(s.server_id).name ))
+                await message.channel.send('Mutiple sounds with name specified. Consider using `{}play ID:1234` to specify an ID. Playing {} (ID {}) from {}...'.format( server.prefix, s.name, s.id, self.get_guild(s.server_id).name ))
 
                 await self.play_sound(message.guild, message.channel, message.author, s, server)
 
             elif sq.count() == 0:
 
-                await message.channel.send('Sound `{}` could not be found in server or in Sound Repository by name. Use `{0}list` to view all sounds, or `{0}search` to search for public sounds. Use `{}find` to play a sound by ID'.format(stripped, server.prefix))
+                await message.channel.send('Sound `{}` could not be found in server or in Sound Repository by name. Use `{0}list` to view all sounds, `{0}search` to search for public sounds, or `{0}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
 
             else:
                 await message.channel.send('Playing public sound {name} (ID {id}) from {guild}. Use `{pref}report {id}` if this sound is inappropriate'.format(
@@ -722,21 +728,8 @@ You have {} sounds (using {})
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
 
-    async def find(self, message, stripped, server):
-        stripped = stripped.lower()
-
-        if all([x in '0123456789' for x in stripped]):
-            id = int( stripped )
-
-            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
-
-            if sound is not None:
-                await self.play_sound(message.guild, message.channel, message.author, sound, server)
-            else:
-                await message.channel.send('No sound found with ID {}'.format(id))
-
-        else:
-            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+    async def find(self, message, *args):
+        await message.channel.send('`find` has been built into `play`. Please do `play ID:1234`')
 
 
     async def search(self, message, stripped, server):
