@@ -307,9 +307,10 @@ class BotClient(discord.AutoShardedClient):
 
 `?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
 
-`?play <name>` : play a saved sound
+`?play <name>` : play a saved sound, or look for public sounds with the name provided
+`?play ID:<id>` : play a public sound by ID
 
-`?<soundname>` : alternative to `?play <soundname>`
+`?<soundname>` : alternative to `?play <name>`. Only works for sounds in your server.
 
 `?stop` : disconnect the bot from voice
 
@@ -328,8 +329,6 @@ class BotClient(discord.AutoShardedClient):
 `?search <term>` : search for public sounds and get IDs
 
 `?new` `?popular` `?random` : find new sound effects from the Repository
-
-`?find <ID>` : play a public sound by ID
 
 `?report <ID>` : report a public sound by ID for advertising or hate
 
