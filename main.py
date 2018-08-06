@@ -189,10 +189,7 @@ class BotClient(discord.AutoShardedClient):
         server = session.query(Server).filter_by(id=member.guild.id).first()
 
         if user is None:
-            user = User(id=member.id, last_vote=0, join_sound=None, leave_sound=None)
-            session.add(user)
-            session.commit()
-            print('Creating new {}'.format(str(user)))
+            return
 
         elif before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
