@@ -149,6 +149,12 @@ class BotClient(discord.AutoShardedClient):
 
         servers.delete(synchronize_session='fetch')
 
+        all_members = [m.id for m in self.get_all_members()]
+
+        users = session.query(User).filter(User.id.notin_(all_members))
+
+        users.delete(synchronize_session='fetch')
+
         session.commit()
 
 
@@ -485,7 +491,7 @@ You have {} sounds (using {})
                 if mime in ['audio/mpeg', 'audio/ogg']:
 
                     if s is not None:
-                        sound.delete()
+                        sound.delete(synchronize_session='fetch')
 
                     sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, plays=0, reports=0)
 
@@ -693,7 +699,7 @@ You have {} sounds (using {})
                 return
 
         if s is not None:
-            s.delete()
+            s.delete(synchronize_session='fetch')
             await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, server.sounds.count(), await self.get_sounds(message.guild)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
