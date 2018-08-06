@@ -196,13 +196,24 @@ class BotClient(discord.AutoShardedClient):
 
         elif before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
-            await self.play_sound(member.guild, member, member, user.join_sound, server)
-            print('Playing join sound')
+
+            if user.join_sound.public:
+
+                await self.play_sound(member.guild, member, member, user.join_sound, server)
+                print('Playing join sound')
+
+            else:
+                user.join_sound = None
 
         elif before.channel is not None and after.channel is None \
             and user.leave_sound is not None:
-            await self.play_sound(member.guild, member, member, user.leave_sound, server)
-            print('Playing leave sound')
+
+            if user.leave_sound.public:
+
+                await self.play_sound(member.guild, member, member, user.leave_sound, server)
+                print('Playing leave sound')
+            else:
+                user.leave_sound = None
 
 
     async def on_message(self, message):
