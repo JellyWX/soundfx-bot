@@ -446,6 +446,9 @@ You have {} sounds (using {})
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
+        elif all( [ x in '0123456789' for x in stripped] ):
+            await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distunguish it from IDs)')
+
         elif len(stripped) > 20:
             await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
 
