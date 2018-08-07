@@ -38,11 +38,11 @@ class User(Base):
     id = Column(BigInteger, unique=True)
     last_vote = Column(Integer)
 
-    join_sound_id = Column( Integer, ForeignKey('sounds.id') )
-    leave_sound_id = Column( Integer, ForeignKey('sounds.id') )
+    join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
+    leave_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
 
-    join_sound = relationship('Sound', foreign_keys=[join_sound_id], cascade='all,delete')
-    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id], cascade='all,delete')
+    join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
+    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id] )
 
     def __repr__(self):
         return '<User {}>'.format(self.id)

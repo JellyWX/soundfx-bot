@@ -11,6 +11,7 @@ import json
 import time
 from configparser import SafeConfigParser
 from datetime import datetime
+import traceback
 
 from sqlalchemy.sql.expression import func
 
@@ -145,6 +146,15 @@ class BotClient(discord.AutoShardedClient):
         servers = session.query(Server).filter(Server.id.notin_(all_ids))
 
         for s in servers:
+            s_ids = [x.id for x in s.sounds]
+            print(s_ids)
+
+            u = session.query(User).filter(User.join_sound_id.in_(s_ids))
+            for user in u:
+                print('resetting join sound')
+                user.join_sound = None
+                user.join_sound_id = None
+
             s.sounds.delete(synchronize_session='fetch')
 
         servers.delete(synchronize_session='fetch')
@@ -234,7 +244,7 @@ class BotClient(discord.AutoShardedClient):
                 session.commit()
 
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             await message.channel.send('Internal exception detected in command, {}'.format(e))
 
 
@@ -533,7 +543,7 @@ You have {} sounds (using {})
 
             elif sq.count() == 0:
 
-                await message.channel.send('Sound `{}` could not be found in server or in Sound Repository by name. Use `{0}list` to view all sounds, `{0}search` to search for public sounds, or `{0}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
+                await message.channel.send('Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
 
             else:
                 await message.channel.send('Playing public sound {name} (ID {id}) from {guild}. Use `{pref}report {id}` if this sound is inappropriate'.format(
