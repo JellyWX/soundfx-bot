@@ -41,8 +41,8 @@ class User(Base):
     join_sound_id = Column( Integer, ForeignKey('sounds.id') )
     leave_sound_id = Column( Integer, ForeignKey('sounds.id') )
 
-    join_sound = relationship('Sound', foreign_keys=[join_sound_id])
-    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id])
+    join_sound = relationship('Sound', foreign_keys=[join_sound_id], cascade='all,delete')
+    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id], cascade='all,delete')
 
     def __repr__(self):
         return '<User {}>'.format(self.id)
