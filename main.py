@@ -510,6 +510,11 @@ You have {} sounds (using {})
         if stripped.startswith('id:') and all( [x in '0123456789' for x in stripped[3:]] ) :
             id = int( stripped[3:] )
             s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
+
+            if s is None:
+                await message.channel.send('No sound found by ID')
+                return
+
         else:
             s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
 
@@ -534,10 +539,12 @@ You have {} sounds (using {})
                 await message.channel.send('Playing public sound {name} (ID {id}) from {guild}. Use `{pref}report {id}` if this sound is inappropriate'.format(
                     name = s.name,
                     id = s.id,
-                    guild = self.get_guild(s.server_id).name
+                    guild = self.get_guild(s.server_id).name,
                     pref = server.prefix
                     )
                 )
+
+                await self.play_sound(message.guild, message.channel, message.author, s, server)
 
         else:
             await self.play_sound(message.guild, message.channel, message.author, s, server)
@@ -858,10 +865,10 @@ You have {} sounds (using {})
 
 
     async def review(self, message, stripped, server):
-        if message.author.id not in self.trusted_ids:
+        if str(message.author.id) not in self.trusted_ids:
             return
 
-        s = session.query(Sound).filter(Sound.public).fiter(not Sound.safe).order_by(Sound.reports.desc())
+        s = session.query(Sound).filter_by(safe=False, public=True).order_by(Sound.reports.desc()).first()
 
         await message.channel.send('Current sound: {} (guild: {}, reports: {}). Type \'safe\' or \'lock\' to issue justice'.format(s.name, self.get_guild(s.server_id).name, s.reports))
         await self.play_sound(message.guild, message.channel, message.author, s, server)
