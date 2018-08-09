@@ -12,7 +12,6 @@ import time
 from configparser import SafeConfigParser
 from datetime import datetime
 import traceback
-import subprocess
 
 from sqlalchemy.sql.expression import func
 
@@ -324,7 +323,6 @@ class BotClient(discord.AutoShardedClient):
         embed = discord.Embed(title='HELP', color=self.color, description=
         '''
 **This help page doesn't work on mobile.**
-
 `?info` : view the info page
 
 `?more` : view how many sounds you have
@@ -337,7 +335,6 @@ class BotClient(discord.AutoShardedClient):
 
 `?play <name>` : play a saved sound, or look for public sounds with the name provided
 `?play ID:<id>` : play a public sound by ID
-
 `?<soundname>` : alternative to `?play <name>`. Only works for sounds in your server.
 
 `?stop` : disconnect the bot from voice
@@ -374,16 +371,12 @@ All commands can be prefixed with a mention, e.g `@{} help`
   Default prefix: `?`
   Reset prefix: `@{user} prefix ?`
   Help: `{p}help`
-
   **Welcome to SFX!**
   Developer: <@203532103185465344>
   Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
-
   Framework: `discord.py`
   Hosting provider: OVH
-
   There is a maximum sound limit per server. You can view this through `{p}more`
-
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
         '''.format(user=self.user.name, p=server.prefix)
@@ -398,11 +391,8 @@ All commands can be prefixed with a mention, e.g `@{} help`
         em = discord.Embed(title='MORE', description=
         '''
 You have {} sounds (using {})
-
 2 ways you can get more sounds for your Discord server:
-
     - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **one** extra sound for each member that joins the server
-
     - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
         '''.format(await self.get_sounds(message.guild), server.sounds.count()))
 
@@ -449,10 +439,10 @@ You have {} sounds (using {})
                     await vc.disconnect()
 
             for f in os.listdir('SOUNDS'):
-                s = session.query(Sound).filter(Sound.id == int(f.split('.')[0])).first()
+                s = session.query(Sound).filter(Sound.id == int(f)).first()
 
                 if s is None or (s.last_used is not None and s.last_used + self.cache_length <= time.time()):
-                    os.remove('SOUNDS/{}.opus'.format(f))
+                    os.remove('SOUNDS/{}'.format(f))
 
             await asyncio.sleep(15)
 
@@ -597,7 +587,7 @@ You have {} sounds (using {})
                 voice.stop()
 
             if self.force_download:
-                downloaded = [int(f.split('.')[0]) for f in os.listdir('SOUNDS')]
+                downloaded = [int(f) for f in os.listdir('SOUNDS')]
 
                 if sound.id in downloaded:
                     print('Sound cached, playing from file...')
@@ -611,9 +601,12 @@ You have {} sounds (using {})
                                 await channel.send('Sound file couldn\'t be loaded. Try again later, or consider re-uploading it. This can happen if the file is deleted or permission levels change.')
                                 return
 
-                    subprocess.run(['ffmpeg', '-i', sound.url, '-acodec', 'libopus', 'SOUNDS/{}.opus'.format(sound.id)])
+                            t = await resp.read()
 
-                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}.opus'.format(sound.id)))
+                            with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
+                                f.write(t)
+
+                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(sound.id)))
 
             else:
                 print('Consider enabling force download in config.ini')
