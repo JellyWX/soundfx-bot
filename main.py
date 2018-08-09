@@ -12,6 +12,7 @@ import time
 from configparser import SafeConfigParser
 from datetime import datetime
 import traceback
+import subprocess
 
 from sqlalchemy.sql.expression import func
 
@@ -448,10 +449,10 @@ You have {} sounds (using {})
                     await vc.disconnect()
 
             for f in os.listdir('SOUNDS'):
-                s = session.query(Sound).filter(Sound.id == int(f)).first()
+                s = session.query(Sound).filter(Sound.id == int(f.split('.')[0])).first()
 
                 if s is None or (s.last_used is not None and s.last_used + self.cache_length <= time.time()):
-                    os.remove('SOUNDS/{}'.format(f))
+                    os.remove('SOUNDS/{}.opus'.format(f))
 
             await asyncio.sleep(15)
 
@@ -506,7 +507,6 @@ You have {} sounds (using {})
                     sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, plays=0, reports=0)
 
                     session.add(sound)
-
 
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
 
@@ -597,7 +597,7 @@ You have {} sounds (using {})
                 voice.stop()
 
             if self.force_download:
-                downloaded = [int(f) for f in os.listdir('SOUNDS')]
+                downloaded = [int(f.split('.')[0]) for f in os.listdir('SOUNDS')]
 
                 if sound.id in downloaded:
                     print('Sound cached, playing from file...')
@@ -611,12 +611,9 @@ You have {} sounds (using {})
                                 await channel.send('Sound file couldn\'t be loaded. Try again later, or consider re-uploading it. This can happen if the file is deleted or permission levels change.')
                                 return
 
-                            t = await resp.read()
+                    subprocess.run(['ffmpeg', '-i', sound.url, '-acodec', 'libopus', 'SOUNDS/{}.opus'.format(sound.id)])
 
-                            with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
-                                f.write(t)
-
-                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(sound.id)))
+                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}.opus'.format(sound.id)))
 
             else:
                 print('Consider enabling force download in config.ini')
