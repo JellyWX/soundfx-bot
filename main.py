@@ -468,8 +468,8 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if server.sounds.count() >= await self.get_sounds(message.guild) and s is None:
-            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either overwrite an existing sound name, use `{prefix}delete` to remove a sound or type `{prefix}more` to learn more ways to get sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
+        if server.sounds.count() >= await self.get_sounds(message.guild):
+            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
