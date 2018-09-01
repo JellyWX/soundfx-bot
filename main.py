@@ -483,7 +483,7 @@ You have {} sounds (using {})
             sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
             s = sound.first()
 
-            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB or send any other message to cancel.'.format(stripped))
+            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB (1MB for premium users) or send any other message to cancel.'.format(stripped))
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
