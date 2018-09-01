@@ -458,13 +458,22 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if server.sounds.count() >= await self.get_sounds(message.guild):
+        premium = False
+
+        async with aiohttp.ClientSession() as cs:
+            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(message.author.id)) as request:
+                t = await request.read()
+                if 'soundfx' in t:
+                    premium = True
+
+
+        if server.sounds.count() >= await self.get_sounds(message.guild) and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
-        elif all( [ x in '0123456789' for x in stripped] ):
+        elif all( [x in '0123456789' for x in stripped] ):
             await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distunguish it from IDs)')
 
         elif len(stripped) > 20:
@@ -481,8 +490,8 @@ You have {} sounds (using {})
             if msg.attachments == [] or not msg.attachments[0].filename.lower().endswith(('mp3', 'ogg')):
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
-            elif msg.attachments[0].size > 500000:
-                await message.channel.send('Please only send MP3/OGG files that are under 500KB. If your file is an MP3, consider turning it to an OGG for more optimized file size.')
+            elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
+                await message.channel.send('Please only send MP3/OGG files that are under 500KB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 async with aiohttp.ClientSession() as cs:
