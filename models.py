@@ -59,7 +59,6 @@ class Sound(Base):
     plays = Column( Integer )
 
     emoji = Column( String(64) )
-    emoji_id = Column( BigInteger )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
 

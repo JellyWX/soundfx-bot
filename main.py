@@ -662,17 +662,12 @@ You have {} sounds (using {})
                 pass
 
             if isinstance(reaction.emoji, discord.Emoji):
-                s.emoji_id = reaction.emoji.id
-
-                if reaction.emoji.animated:
-                    s.emoji = 'a:' + reaction.emoji.name
-                else:
-                    s.emoji = reaction.emoji.name
+                await message.channel.send('Please only use normal emojis.')
 
             else:
                 s.emoji = reaction.emoji
 
-            await message.channel.send('Reaction attached! React to any of my messages to bring up the sound.')
+                await message.channel.send('Reaction attached. Do `?soundboard` to open the soundboard.')
 
         else:
             await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
