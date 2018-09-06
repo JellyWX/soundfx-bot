@@ -343,12 +343,6 @@ class BotClient(discord.AutoShardedClient):
 
 `?delete <name>` : delete a sound
 
-`?link <name>` : link a reaction to a sound
-
-`?unlink <name>` : unlink a sound-reaction pair
-
-`?soundboard` : pull up all sounds with reaction pairs
-
 `?public <name>` : set a sound to public/private
 
 `?search <term>` : search for public sounds and get IDs
@@ -704,7 +698,7 @@ You have {} sounds (using {})
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = server.sounds.filter(Sound.name == stripped)
+        s = server.sounds.filter(Sound.name == stripped).first()
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
