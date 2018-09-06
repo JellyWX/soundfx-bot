@@ -178,36 +178,49 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def on_reaction_add(self, reaction, user):
-        server = session.query(Server).filter_by(id=reaction.message.guild.id).first()
+    async def on_raw_reaction_add(self, payload):
+        server = session.query(Server).filter_by(id=payload.guild_id).first()
 
-        if reaction.message.guild is None:
+        channel = self.get_channel(payload.channel_id)
+
+        if channel.guild is None:
+            return
+
+        message = await channel.get_message(payload.message_id)
+        user = channel.guild.get_member(payload.user_id)
+
+        if message.embeds == []:
             return
 
         if user.bot or user.voice is None:
             return
 
-        if reaction.message.author == self.user:
-            if isinstance(reaction.emoji, discord.Emoji):
-                for s in server.sounds:
-                    if s.emoji is not None and s.emoji_id == reaction.emoji.id:
-                        break # the combination of this break and the else following quits the flow if the reaction isnt stored for use
-                else:
-                    return
+        if message.author == self.user:
+            r = None
+            s = None
+            done = False
 
-            else:
-                for s in server.sounds:
-                    if s.emoji == reaction.emoji:
-                        print('breaking')
-                        break
-                else:
-                    return
+            for reaction in message.reactions:
 
-            # method continues here
-            await reaction.message.remove_reaction(reaction, user)
-            await reaction.message.add_reaction(reaction.emoji)
+                if reaction.emoji == payload.emoji.name:
 
-            await self.play_sound(reaction.message.guild, reaction.message.channel, user, s, server)
+                    for sound in server.sounds:
+                        if sound.emoji == reaction.emoji:
+                            r = reaction
+                            s = sound
+                            done = True
+                            break
+                    else:
+                        return
+
+                elif done:
+                    break
+
+            if done:
+                await message.remove_reaction(reaction, user)
+                await message.add_reaction(reaction.emoji)
+
+                await self.play_sound(message.guild, message.channel, user, s, server)
 
 
     async def on_voice_state_update(self, member, before, after):
@@ -457,7 +470,7 @@ You have {} sounds (using {})
         async with aiohttp.ClientSession() as cs:
             async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(message.author.id)) as request:
                 t = await request.read()
-                if 'soundfx' in t:
+                if 'soundfx' in str(t):
                     premium = True
 
 
@@ -717,13 +730,8 @@ You have {} sounds (using {})
 
         for sounds in server.sounds.filter(Sound.emoji is not None):
 
-            if sounds.emoji_id is None:
-                strings.append('`{}` : {}'.format(sounds.name, sounds.emoji))
-                emojis.append(sounds.emoji)
-
-            else:
-                strings.append('`{}` : <:{}:{}>'.format(sounds.name, sounds.emoji, sounds.emoji_id))
-                emojis.append(self.get_emoji(sounds.emoji_id))
+            strings.append('`{}` : {}'.format(sounds.name, sounds.emoji))
+            emojis.append(sounds.emoji)
 
         m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
         for e in emojis:
