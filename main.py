@@ -706,7 +706,7 @@ You have {} sounds (using {})
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = server.sounds.filter(Sound.name == stripped).first()
+        s = server.sounds.filter(Sound.name == stripped)
 
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
@@ -716,7 +716,7 @@ You have {} sounds (using {})
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        if s is not None:
+        if s.first() is not None:
             self.delete_sound(s)
             await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, server.sounds.count(), await self.get_sounds(message.guild)))
         else:
