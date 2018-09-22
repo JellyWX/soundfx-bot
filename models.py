@@ -51,6 +51,8 @@ class Sound(Base):
     locked = Column( Boolean, nullable=False, default=False)
     reports = Column( Integer )
 
+    hash = Column( String(32) )
+
 
 class User(Base):
     __tablename__ = 'users'

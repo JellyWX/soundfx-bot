@@ -7,11 +7,11 @@ import os
 import aiohttp ## pip3 install aiohttp
 import magic ## pip3 install python-magic
 import asyncio
-import json
-import time
-from configparser import SafeConfigParser
-from datetime import datetime
-import traceback
+import json # send requests
+import time # check delays
+from configparser import SafeConfigParser # read config
+import traceback # error grabbing
+from hashlib import md5 # used for checking uploaded files
 
 from sqlalchemy.sql.expression import func
 
@@ -482,8 +482,6 @@ You have {} sounds (using {})
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        print()
-
         if len(user.sounds) >= await self.get_sounds(message.author) and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per user (+{} for your bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.author) - self.MAX_SOUNDS, prefix=server.prefix))
 
@@ -511,16 +509,20 @@ You have {} sounds (using {})
                 await message.channel.send('Please only send MP3/OGG files that are under 500KB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
+                m = md5()
+
                 async with aiohttp.ClientSession() as cs:
                     async with cs.get(msg.attachments[0].url) as request:
-                        mime = magic.from_buffer(await request.read(), mime=True)
+                        r = await request.read()
+                        mime = magic.from_buffer(r, mime=True)
+                        m.update(r)
 
                 if mime in ['audio/mpeg', 'audio/ogg']:
 
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0)
+                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0, hash=m.hexdigest())
 
                     session.add(sound)
 
@@ -628,6 +630,10 @@ You have {} sounds (using {})
                                 return
 
                             t = await resp.read()
+                            if sound.hash is None:
+                                m = md5()
+                                m.update(t)
+                                sound.hash = m.hexdigest()
 
                             with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
                                 f.write(t)
