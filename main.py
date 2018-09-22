@@ -22,7 +22,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 22
+        self.MAX_SOUNDS = 5
 
         self.commands = {
             'ping' : self.ping,
@@ -65,21 +65,19 @@ class BotClient(discord.AutoShardedClient):
         self.trusted_ids = self.config.get('DEFAULT', 'TRUSTED_IDS').replace(' ', '').split(',')
 
 
-    async def get_sounds(self, guild):
+    async def get_sounds(self, u):
         extra = 0
 
+        user = session.query(User).filter(User.id == u.id).first()
         patreon_server = self.get_guild( int(self.config.get('DEFAULT', 'patreon_server')) )
 
         members = [p.id for p in patreon_server.members if not p.bot]
-        guild_members = []
 
-        for member in guild.members:
-            if member.id in members:
-                extra += 1
+        if u.id in members:
+            extra += 3
 
-            guild_members.append(member.id)
-
-        extra += 2 * len(session.query(User).filter(User.id.in_(guild_members)).filter(User.last_vote + 2592000 > time.time()).all())
+        if user.last_vote + 2592000 > time.time():
+            extra += 5
 
         return self.MAX_SOUNDS + extra
 
@@ -262,6 +260,11 @@ class BotClient(discord.AutoShardedClient):
             session.add(s)
             session.commit()
 
+        if session.query(User).filter_by(id=message.author.id).first() is None:
+            s = User(id=message.author.id, last_vote=0)
+            session.add(s)
+            session.commit()
+
         try:
             if await self.get_cmd(message):
                 session.commit()
@@ -395,13 +398,16 @@ All commands can be prefixed with a mention, e.g `@{} help`
 
 
     async def more(self, message, stripped, server):
+
+        user = session.query(User).filter(User.id == message.author.id).first()
+
         em = discord.Embed(title='MORE', description=
         '''
 You have {} sounds (using {})
-2 ways you can get more sounds for your Discord server:
-    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **one** extra sound for each member that joins the server
-    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **two** extra sounds for each member that upvotes the bot
-        '''.format(await self.get_sounds(message.guild), server.sounds.count()))
+2 ways you can get more sounds for you:
+    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **three** extra sounds
+    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **five** extra sounds
+        '''.format(await self.get_sounds(message.author), len(user.sounds)))
 
         await message.channel.send(embed=em)
 
@@ -474,8 +480,12 @@ You have {} sounds (using {})
                     premium = True
 
 
-        if server.sounds.count() >= await self.get_sounds(message.guild) and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per server (+{} for your server bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.guild) - 14, prefix=server.prefix))
+        user = session.query(User).filter(User.id == message.author.id).first()
+
+        print()
+
+        if len(user.sounds) >= await self.get_sounds(message.author) and not premium:
+            await message.channel.send('Sorry, but the maximum is {} sounds per user (+{} for your bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.author) - self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
@@ -510,14 +520,14 @@ You have {} sounds (using {})
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, name=stripped, plays=0, reports=0)
+                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0)
 
                     session.add(sound)
 
-                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. Please do not delete the file from discord.'.format(name=stripped, prefix=server.prefix))
+                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from discord.**'.format(name=stripped, prefix=server.prefix))
 
                 else:
-                    await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. If it isn\'t, please send `file type {}` to us over on the SoundFX Discord'.format(mime))
+                    await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. To resolve, visit https://audio.online-convert.com/convert-to-ogg and convert your file to an OGG.'.format(mime))
 
 
     async def play(self, message, stripped, server):
@@ -718,7 +728,7 @@ You have {} sounds (using {})
 
         if s.first() is not None:
             self.delete_sound(s)
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, server.sounds.count(), await self.get_sounds(message.guild)))
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), await self.get_sounds(message.author)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 

@@ -31,23 +31,6 @@ class Server(Base):
         return '<Server {}>'.format(self.id)
 
 
-class User(Base):
-    __tablename__ = 'users'
-
-    map_id = Column(Integer, primary_key=True)
-    id = Column(BigInteger, unique=True)
-    last_vote = Column(Integer)
-
-    join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
-    leave_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
-
-    join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
-    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id] )
-
-    def __repr__(self):
-        return '<User {}>'.format(self.id)
-
-
 class Sound(Base):
     __tablename__ = 'sounds'
 
@@ -61,11 +44,31 @@ class Sound(Base):
     emoji = Column( String(64) )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
+    uploader_id = Column( BigInteger, ForeignKey('users.id') )
 
     public = Column( Boolean, nullable=False, default=False )
     safe = Column( Boolean, nullable=False, default=False )
     locked = Column( Boolean, nullable=False, default=False)
     reports = Column( Integer )
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    map_id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, unique=True)
+    last_vote = Column(Integer)
+
+    join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
+    leave_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
+
+    join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
+    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id] )
+
+    sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
+
+    def __repr__(self):
+        return '<User {}>'.format(self.id)
 
 
 if passwd:
