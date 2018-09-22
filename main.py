@@ -718,6 +718,8 @@ You have {} sounds (using {})
 
         s = server.sounds.filter(Sound.name == stripped)
 
+        user = session.query(User).filter(User.id == message.author.id).first()
+
         if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
             for role in message.author.roles:
                 if role.id in server.roles:
