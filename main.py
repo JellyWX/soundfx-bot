@@ -336,42 +336,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.color, description=
-        '''
-**This help page doesn't work on mobile.**
-`?info` : view the info page
-
-`?more` : view how many sounds you have
-
-`?prefix <new prefix>` : change the prefix
-
-`?roles` : set the roles that can use the bot
-
-`?upload <name>` : upload an MP3 or OGG to the name (will guide you through the process)
-
-`?play <name>` : play a saved sound, or look for public sounds with the name provided
-`?play ID:<id>` : play a public sound by ID
-`?<soundname>` : alternative to `?play <name>`. Only works for sounds in your server.
-
-`?stop` : disconnect the bot from voice
-
-`?list` : view all sounds saved
-
-`?delete <name>` : delete a sound
-
-`?public <name>` : set a sound to public/private
-
-`?search <term>` : search for public sounds and get IDs
-
-`?new` `?popular` `?random` : find new sound effects from the Repository
-
-`?report <ID>` : report a public sound by ID for advertising or hate
-
-`?greet <ID>` : set your greeting sound (plays when you join a VC) (sound must be public)
-
-All commands can be prefixed with a mention, e.g `@{} help`
-        '''.format(self.user.name)
-        )
+        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://sfx.jellywx.co.uk/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
 
@@ -379,6 +344,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
         em = discord.Embed(title='INFO', color=self.color, description=
         '''\u200B
   Default prefix: `?`
+
   Reset prefix: `@{user} prefix ?`
   Help: `{p}help`
   **Welcome to SFX!**
@@ -387,6 +353,7 @@ All commands can be prefixed with a mention, e.g `@{} help`
   Framework: `discord.py`
   Hosting provider: OVH
   There is a maximum sound limit per server. You can view this through `{p}more`
+
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
         '''.format(user=self.user.name, p=server.prefix)
@@ -535,6 +502,9 @@ You have {} sounds (using {})
     async def play(self, message, stripped, server):
         stripped = stripped.lower()
 
+        if stripped == '':
+            await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
+
         if stripped.startswith('id:') and all( [x in '0123456789' for x in stripped[3:]] ) :
             id = int( stripped[3:] )
             s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
@@ -546,10 +516,10 @@ You have {} sounds (using {})
         else:
             s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
 
-        if stripped == '':
-            await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
+            if s is None:
+                s = session.query(Sound).filter_by(uploader_id=message.author.id, name=stripped).first()
 
-        elif s is None: ## if none in current server by name:
+        if s is None: ## if none in current server by name:
             sq = session.query(Sound).filter( Sound.public ).filter( Sound.name == stripped ).order_by( func.rand() ) ## query by name
             s = sq.first()
 
@@ -655,8 +625,15 @@ You have {} sounds (using {})
     async def list(self, message, stripped, server):
 
         strings = []
-        for s in server.sounds:
-            string = '**{}**'.format(s.name)
+
+        if 'me' in stripped:
+            user = session.query(User).filter(User.id == message.author.id).first()
+            a = user.sounds
+        else:
+            a = server.sounds
+
+        for s in a:
+            string = '**{}**'.format(s.name, s)
             if s.public:
                 string += ' (\U0001F513)'
             else:
@@ -671,7 +648,7 @@ You have {} sounds (using {})
 
             strings.append(string)
 
-        await message.channel.send('All sounds on server: {}'.format(', '.join(strings)))
+        await message.channel.send('All your sounds: {}'.format(', '.join(strings)))
 
 
     async def link(self, message, stripped, server):
