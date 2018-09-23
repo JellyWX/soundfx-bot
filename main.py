@@ -22,7 +22,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 5
+        self.MAX_SOUNDS = 4
 
         self.commands = {
             'ping' : self.ping,
@@ -74,10 +74,10 @@ class BotClient(discord.AutoShardedClient):
         members = [p.id for p in patreon_server.members if not p.bot]
 
         if u.id in members:
-            extra += 3
+            extra += 2
 
         if user.last_vote + 2592000 > time.time():
-            extra += 5
+            extra += 3
 
         return self.MAX_SOUNDS + extra
 
@@ -372,8 +372,8 @@ class BotClient(discord.AutoShardedClient):
         '''
 You have {} sounds (using {})
 2 ways you can get more sounds for you:
-    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **three** extra sounds
-    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **five** extra sounds
+    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **two** extra sounds
+    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **three** extra sounds
         '''.format(await self.get_sounds(message.author), len(user.sounds)))
 
         await message.channel.send(embed=em)
