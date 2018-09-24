@@ -4,6 +4,7 @@ from ctypes.util import find_library
 import discord ## pip3 install git+...
 import sys
 import os
+import subprocess # for Espeak
 import aiohttp ## pip3 install aiohttp
 import magic ## pip3 install python-magic
 import asyncio
@@ -12,6 +13,7 @@ import time # check delays
 from configparser import SafeConfigParser # read config
 import traceback # error grabbing
 from hashlib import md5 # used for checking uploaded files
+import io
 
 from sqlalchemy.sql.expression import func
 
@@ -47,7 +49,8 @@ class BotClient(discord.AutoShardedClient):
             'random' : self.search,
             'report' : self.report,
             'greet' : self.greet,
-            'review' : self.review
+            'review' : self.review,
+            'tts' : self.tts
         }
 
         self.timeouts = {}
@@ -648,7 +651,10 @@ You have {} sounds (using {})
 
             strings.append(string)
 
-        await message.channel.send('All your sounds: {}'.format(', '.join(strings)))
+        if 'me' in stripped:
+            await message.channel.send('All your sounds: {}'.format(', '.join(strings)))
+        else:
+            await message.channel.send('All sounds on this server: {}'.format(', '.join(strings)))
 
 
     async def link(self, message, stripped, server):
@@ -887,6 +893,44 @@ You have {} sounds (using {})
 
         else:
             await message.channel.send('Judgement postponed.')
+
+
+    async def tts(self, message, stripped, server):
+        # command: espeak --stdout "hello world" | ffmpeg -i pipe:0 out.ogg
+        caller = message.author
+        guild = message.guild
+
+        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
+            for role in caller.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
+
+        if caller.voice is None:
+            await channel.send('You aren\'t in a voice channel.')
+
+        elif not caller.voice.channel.permissions_for(guild.me).connect:
+            await channel.send('No permissions to connect to channel.')
+
+        else:
+            try:
+                voice = await caller.voice.channel.connect()
+            except discord.errors.ClientException:
+                voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
+                if voice.channel != caller.voice.channel:
+                    await voice.disconnect()
+                    voice = await caller.voice.channel.connect()
+
+            if voice.is_playing():
+                voice.stop()
+
+
+            s = subprocess.Popen(['espeak', '--stdout', '"{}"'.format(stripped)], stdout=subprocess.PIPE)
+            s2 = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 's16le', '-ar', '48000', '-ac', '2', '-loglevel', 'warning', 'pipe:1'], stdin=s.stdout, stdout=subprocess.PIPE)
+
+            voice.play(discord.PCMAudio(s2.stdout))
 
 
 client = BotClient()
