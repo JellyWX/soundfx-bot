@@ -170,12 +170,6 @@ class BotClient(discord.AutoShardedClient):
 
         servers.delete(synchronize_session='fetch')
 
-        all_members = [m.id for m in self.get_all_members()]
-
-        users = session.query(User).filter(User.id.notin_(all_members))
-
-        users.delete(synchronize_session='fetch')
-
         session.commit()
 
 
