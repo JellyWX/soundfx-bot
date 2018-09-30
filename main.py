@@ -921,7 +921,7 @@ You have {} sounds (using {})
                 voice.stop()
 
 
-            s = subprocess.Popen(['espeak', '--stdout', '"{}"'.format(stripped)], stdout=subprocess.PIPE)
+            s = subprocess.Popen(['pico2wave', '-w', 'stdout.wav', '"{}"'.format(stripped)], stdout=subprocess.PIPE)
             s2 = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 's16le', '-ar', '48000', '-ac', '2', '-loglevel', 'warning', 'pipe:1'], stdin=s.stdout, stdout=subprocess.PIPE)
 
             voice.play(discord.PCMAudio(s2.stdout))
