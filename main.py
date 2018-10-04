@@ -470,7 +470,7 @@ You have {} sounds (using {})
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
             elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
-                await message.channel.send('Please only send MP3/OGG files that are under 500KB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
+                await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 m = md5()
@@ -486,7 +486,7 @@ You have {} sounds (using {})
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0, hash=m.hexdigest())
+                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
 
                     session.add(sound)
 
