@@ -52,6 +52,7 @@ class Sound(Base):
     reports = Column( Integer )
 
     hash = Column( String(32) )
+    big = Column( Boolean, nullable=False, default=False )
 
 
 class User(Base):
