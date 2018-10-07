@@ -29,7 +29,7 @@ class BotClient(discord.AutoShardedClient):
         self.commands = {
             'ping' : self.ping,
             'help' : self.help,
-            'info': self.info,
+            'info' : self.info,
             'prefix' : self.change_prefix,
             'upload' : self.wait_for_file,
             'play' : self.play,
@@ -50,7 +50,8 @@ class BotClient(discord.AutoShardedClient):
             'report' : self.report,
             'greet' : self.greet,
             'review' : self.review,
-            'tts' : self.tts
+            'tts' : self.tts,
+            'invite' : self.info
         }
 
         self.timeouts = {}
@@ -344,11 +345,13 @@ class BotClient(discord.AutoShardedClient):
 
   Reset prefix: `@{user} prefix ?`
   Help: `{p}help`
+
+  Invite me: https://discordapp.com/oauth2/authorize?client_id=430384808200372245&scope=bot&permissions=36703232
+
   **Welcome to SFX!**
   Developer: <@203532103185465344>
   Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
-  Framework: `discord.py`
-  Hosting provider: OVH
+
   There is a maximum sound limit per server. You can view this through `{p}more`
 
   *If you have enquiries about new features, please send to the discord server*
