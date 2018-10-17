@@ -174,57 +174,12 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def on_raw_reaction_add(self, payload):
-        server = session.query(Server).filter_by(id=payload.guild_id).first()
-
-        channel = self.get_channel(payload.channel_id)
-
-        if channel.guild is None:
-            return
-
-        message = await channel.get_message(payload.message_id)
-        user = channel.guild.get_member(payload.user_id)
-
-        if message.embeds == []:
-            return
-
-        if user.bot or user.voice is None:
-            return
-
-        if message.author == self.user:
-            r = None
-            s = None
-            done = False
-
-            for reaction in message.reactions:
-
-                if reaction.emoji == payload.emoji.name:
-
-                    for sound in server.sounds:
-                        if sound.emoji == reaction.emoji:
-                            r = reaction
-                            s = sound
-                            done = True
-                            break
-                    else:
-                        return
-
-                elif done:
-                    break
-
-            if done:
-                await message.remove_reaction(reaction, user)
-                await message.add_reaction(reaction.emoji)
-
-                await self.play_sound(message.guild, message.channel, user, s, server)
-
-
     async def on_voice_state_update(self, member, before, after):
         user = session.query(User).filter(User.id == member.id).first()
-        server = session.query(Server).filter_by(id=member.guild.id).first()
-
         if user is None:
             return
+
+        server = session.query(Server).filter_by(id=member.guild.id).first()
 
         elif before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
@@ -654,51 +609,6 @@ You have {} sounds (using {})
             await message.channel.send('All sounds on this server: {}'.format(', '.join(strings)))
 
 
-    async def link(self, message, stripped, server):
-        stripped = stripped.lower()
-
-        s = server.sounds.filter(Sound.name == stripped).first()
-
-        if stripped == '':
-            await message.channel.send('Please provide the name of the sound you wish to link to an emoji (e.g `?link HEADHUNTER`)')
-
-        elif s is not None:
-            response = await message.channel.send('Found sound. Please react to this message with the emoji you wish to use!')
-
-            try:
-                reaction, _ = await client.wait_for('reaction_add', timeout=120, check=lambda r, u: r.message.id == response.id and u == message.author)
-            except:
-                pass
-
-            if isinstance(reaction.emoji, discord.Emoji):
-                await message.channel.send('Please only use normal emojis.')
-
-            else:
-                s.emoji = reaction.emoji
-
-                await message.channel.send('Reaction attached. Do `?soundboard` to open the soundboard.')
-
-        else:
-            await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
-
-
-    async def unlink(self, message, stripped, server):
-        stripped = stripped.lower()
-
-        s = server.sounds.filter(Sound.name == stripped).first()
-
-        if stripped == '':
-            await message.channel.send('Please provide the name of the sound you wish to unlink from its emoji (e.g `?unlink ULTRAKILL`)')
-
-        elif s is not None:
-            s.emoji = None
-            s.emoji_id = None
-            await message.channel.send('Unlinked `{}`'.format(stripped))
-
-        else:
-            await message.channel.send('Couldn\'t find sound by name `{}`!'.format(stripped))
-
-
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
@@ -719,21 +629,6 @@ You have {} sounds (using {})
             await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), await self.get_sounds(message.author)))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
-
-
-    async def soundboard(self, message, stripped, server):
-
-        strings = []
-        emojis = []
-
-        for sounds in server.sounds.filter(Sound.emoji is not None):
-
-            strings.append('`{}` : {}'.format(sounds.name, sounds.emoji))
-            emojis.append(sounds.emoji)
-
-        m = await message.channel.send(embed=discord.Embed(color=self.color, description='\n\n'.join(strings)))
-        for e in emojis:
-            await m.add_reaction(e)
 
 
     async def public(self, message, stripped, server):
@@ -892,50 +787,11 @@ You have {} sounds (using {})
             await message.channel.send('Judgement postponed.')
 
 
-    async def tts(self, message, stripped, server):
-        # command: espeak --stdout "hello world" | ffmpeg -i pipe:0 out.ogg
-        caller = message.author
-        guild = message.guild
-
-        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
-            for role in caller.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
-
-        if caller.voice is None:
-            await channel.send('You aren\'t in a voice channel.')
-
-        elif not caller.voice.channel.permissions_for(guild.me).connect:
-            await channel.send('No permissions to connect to channel.')
-
-        else:
-            try:
-                voice = await caller.voice.channel.connect()
-            except discord.errors.ClientException:
-                voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
-                if voice.channel != caller.voice.channel:
-                    await voice.disconnect()
-                    voice = await caller.voice.channel.connect()
-
-            if voice.is_playing():
-                voice.stop()
-
-
-            s = subprocess.Popen(['pico2wave', '-w', 'stdout.wav', '"{}"'.format(stripped)], stdout=subprocess.PIPE)
-            s2 = subprocess.Popen(['ffmpeg', '-i', '-', '-f', 's16le', '-ar', '48000', '-ac', '2', '-loglevel', 'warning', 'pipe:1'], stdin=s.stdout, stdout=subprocess.PIPE)
-
-            voice.play(discord.PCMAudio(s2.stdout))
-
-
 client = BotClient()
 
 try:
-
     client.loop.create_task(client.cleanup())
-    client.run(client.config.get('TOKENS', 'bot'))
+    client.run(client.config.get('TOKENS', 'bot'), max_messages=50)
 except Exception as e:
     print('Error detected. Restarting in 15 seconds.')
     print(sys.exc_info())
