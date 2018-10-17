@@ -36,9 +36,6 @@ class BotClient(discord.AutoShardedClient):
             'list' : self.list,
             'delete' : self.delete,
             'stop' : self.stop,
-            'link' : self.link,
-            'unlink' : self.unlink,
-            'soundboard' : self.soundboard,
             'more' : self.more,
             'roles' : self.role,
             'public' : self.public,
@@ -50,7 +47,6 @@ class BotClient(discord.AutoShardedClient):
             'report' : self.report,
             'greet' : self.greet,
             'review' : self.review,
-            'tts' : self.tts,
             'invite' : self.info
         }
 
@@ -181,7 +177,7 @@ class BotClient(discord.AutoShardedClient):
 
         server = session.query(Server).filter_by(id=member.guild.id).first()
 
-        elif before.channel != after.channel and after.channel is not None \
+        if before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
 
             if user.join_sound.public:
