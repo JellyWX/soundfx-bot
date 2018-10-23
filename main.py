@@ -585,23 +585,30 @@ class BotClient(discord.AutoShardedClient):
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = server.sounds.filter(Sound.name == stripped)
-
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
-            for role in message.author.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
+        u = session.query(Sound).filter(Sound.uploader_id == message.author.id).filter(Sound.name == stripped)
 
-        if s.first() is not None:
-            self.delete_sound(s)
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
+        if u.first() is None:
+            if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
+                for role in message.author.roles:
+                    if role.id in server.roles:
+                        break
+                else:
+                    await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                    return
+
+            s = server.sounds.filter(Sound.name == stripped)
+
+            if s.first() is not None:
+                self.delete_sound(s)
+                await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
+            else:
+                await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+
         else:
-            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+            self.delete_sound(u)
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
 
 
     async def public(self, message, stripped, server):
