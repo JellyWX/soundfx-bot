@@ -24,7 +24,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 4
+        self.MAX_SOUNDS = 9
 
         self.commands = {
             'ping' : self.ping,
@@ -63,23 +63,6 @@ class BotClient(discord.AutoShardedClient):
         self.cache_length = int(self.config.get('DEFAULT', 'CACHE_LENGTH'))
 
         self.trusted_ids = self.config.get('DEFAULT', 'TRUSTED_IDS').replace(' ', '').split(',')
-
-
-    async def get_sounds(self, u):
-        extra = 0
-
-        user = session.query(User).filter(User.id == u.id).first()
-        patreon_server = self.get_guild( int(self.config.get('DEFAULT', 'patreon_server')) )
-
-        members = [p.id for p in patreon_server.members if not p.bot]
-
-        if u.id in members:
-            extra += 2
-
-        if user.last_vote + 2592000 > time.time():
-            extra += 3
-
-        return self.MAX_SOUNDS + extra
 
 
     async def send(self):
@@ -319,13 +302,7 @@ class BotClient(discord.AutoShardedClient):
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        em = discord.Embed(title='MORE', description=
-        '''
-You have {} sounds (using {})
-2 ways you can get more sounds for you:
-    - Join our server to keep up on the latest! https://discord.gg/v6YMfjj You will get **two** extra sounds
-    - Upvote our bot over on https://discordbots.org/bot/430384808200372245 You will get **three** extra sounds
-        '''.format(await self.get_sounds(message.author), len(user.sounds)))
+        em = discord.Embed(title='MORE', description='''Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com''')
 
         await message.channel.send(embed=em)
 
@@ -400,8 +377,8 @@ You have {} sounds (using {})
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        if len(user.sounds) >= await self.get_sounds(message.author) and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per user (+{} for your bonuses). You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, await self.get_sounds(message.author) - self.MAX_SOUNDS, prefix=server.prefix))
+        if len(user.sounds) >= self.MAX_SOUNDS and not premium:
+            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
@@ -622,7 +599,7 @@ You have {} sounds (using {})
 
         if s.first() is not None:
             self.delete_sound(s)
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), await self.get_sounds(message.author)))
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
