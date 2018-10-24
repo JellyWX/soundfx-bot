@@ -191,7 +191,7 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         if session.query(User).filter_by(id=message.author.id).first() is None:
-            s = User(id=message.author.id, last_vote=0)
+            s = User(id=message.author.id)
             session.add(s)
             session.commit()
 
@@ -557,13 +557,6 @@ class BotClient(discord.AutoShardedClient):
             else:
                 string += ' (\U0001F510)'
 
-            if s.emoji is None:
-                pass
-            elif isinstance(s.emoji, str):
-                string += ' ({})'.format(s.emoji)
-            else:
-                string += ' (<:{0}:{1}>)'.format(s.emoji, s.emoji_id)
-
             strings.append(string)
 
         if 'me' in stripped:
@@ -718,7 +711,7 @@ class BotClient(discord.AutoShardedClient):
             sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
             if user is None:
-                user = User(id=message.author.id, last_vote=0, join_sound=None, leave_sound=None)
+                user = User(id=message.author.id, join_sound=None, leave_sound=None)
                 session.add(user)
                 session.commit()
 
