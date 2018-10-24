@@ -47,7 +47,6 @@ class Sound(Base):
     public = Column( Boolean, nullable=False, default=False )
     safe = Column( Boolean, nullable=False, default=False )
     locked = Column( Boolean, nullable=False, default=False)
-    reports = Column( Integer )
 
     hash = Column( String(32) )
     big = Column( Boolean, nullable=False, default=False )

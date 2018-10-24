@@ -18,6 +18,8 @@ import io
 from sqlalchemy.sql.expression import func
 
 
+check_digits = lambda x: all( [y in '0123456789' for y in x] )
+
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
@@ -39,12 +41,10 @@ class BotClient(discord.AutoShardedClient):
             'more' : self.more,
             'roles' : self.role,
             'public' : self.public,
-            'find' : self.find,
             'search' : self.search,
             'new' : self.search,
             'popular' : self.search,
             'random' : self.search,
-            'report' : self.report,
             'greet' : self.greet,
             'review' : self.review,
             'invite' : self.info
@@ -363,7 +363,7 @@ class BotClient(discord.AutoShardedClient):
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
-        elif all( [x in '0123456789' for x in stripped] ):
+        elif check_digits(stripped):
             await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distunguish it from IDs)')
 
         elif len(stripped) > 20:
@@ -397,7 +397,7 @@ class BotClient(discord.AutoShardedClient):
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, reports=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
+                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
 
                     session.add(sound)
 
@@ -413,7 +413,7 @@ class BotClient(discord.AutoShardedClient):
         if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
-        if stripped.startswith('id:') and all( [x in '0123456789' for x in stripped[3:]] ) :
+        if stripped.startswith('id:') and check_digits(stripped[3:]):
             id = int( stripped[3:] )
             s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
@@ -442,7 +442,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
 
             else:
-                await message.channel.send('Playing public sound {name} (ID {id}) from {guild}. Use `{pref}report {id}` if this sound is inappropriate'.format(
+                await message.channel.send('Playing public sound {name} (ID {id}) from {guild}'.format(
                     name = s.name,
                     id = s.id,
                     guild = self.get_guild(s.server_id).name,
@@ -610,10 +610,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
 
-    async def find(self, message, *args):
-        await message.channel.send('`find` has been built into `play`. Please do `play ID:1234`')
-
-
     async def search(self, message, stripped, server):
 
         embed = discord.Embed(title='Public sounds matching filter:')
@@ -663,27 +659,6 @@ class BotClient(discord.AutoShardedClient):
         await message.channel.send(embed=embed)
 
 
-    async def report(self, message, stripped, server):
-        stripped = stripped.lower()
-
-        if all([x in '0123456789' for x in stripped]):
-            id = int( stripped )
-
-            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
-
-            if sound is not None:
-                if sound.reports is None:
-                    sound.reports = 1
-                else:
-                    sound.reports += 1
-                await message.channel.send('The sound has been reported and will be reviewed. Thank you.')
-            else:
-                await message.channel.send('No sound found with ID {}'.format(id))
-
-        else:
-            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
-
-
     async def greet(self, message, stripped, server):
         user = session.query(User).filter(User.id == message.author.id).first()
         stripped = stripped.lower()
@@ -695,7 +670,7 @@ class BotClient(discord.AutoShardedClient):
         elif stripped == '':
             await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
 
-        elif all([x in '0123456789' for x in stripped]):
+        elif check_digits(stripped):
             id = int( stripped )
 
             sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
@@ -714,30 +689,6 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
-
-
-    async def review(self, message, stripped, server):
-        if str(message.author.id) not in self.trusted_ids:
-            return
-
-        s = session.query(Sound).filter_by(safe=False, public=True).order_by(Sound.reports.desc()).first()
-
-        await message.channel.send('Current sound: {} (guild: {}, reports: {}). Type \'safe\' or \'lock\' to issue justice'.format(s.name, self.get_guild(s.server_id).name, s.reports))
-        await self.play_sound(message.guild, message.channel, message.author, s, server)
-
-        m = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
-
-        if m.content == 'lock':
-            s.locked = True
-            s.public = False
-            await message.channel.send('Sound has been locked.')
-
-        elif m.content == 'safe':
-            s.safe = True
-            await message.channel.send('Sound has been set as safe.')
-
-        else:
-            await message.channel.send('Judgement postponed.')
 
 
 client = BotClient()
