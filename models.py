@@ -41,8 +41,6 @@ class Sound(Base):
     last_used = Column( Integer )
     plays = Column( Integer )
 
-    emoji = Column( String(64) )
-
     server_id = Column( BigInteger, ForeignKey('servers.id') )
     uploader_id = Column( BigInteger, ForeignKey('users.id') )
 
@@ -60,13 +58,9 @@ class User(Base):
 
     map_id = Column(Integer, primary_key=True)
     id = Column(BigInteger, unique=True)
-    last_vote = Column(Integer)
 
     join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
-    leave_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
-
     join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
-    leave_sound = relationship('Sound', foreign_keys=[leave_sound_id] )
 
     sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
 

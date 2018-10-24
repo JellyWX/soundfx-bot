@@ -60,8 +60,6 @@ class BotClient(discord.AutoShardedClient):
         if self.force_download and 'SOUNDS' not in os.listdir():
             os.mkdir('SOUNDS')
 
-        self.cache_length = int(self.config.get('DEFAULT', 'CACHE_LENGTH'))
-
         self.trusted_ids = self.config.get('DEFAULT', 'TRUSTED_IDS').replace(' ', '').split(',')
 
 
@@ -300,9 +298,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def more(self, message, stripped, server):
 
-        user = session.query(User).filter(User.id == message.author.id).first()
-
-        em = discord.Embed(title='MORE', description='''Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com''')
+        em = discord.Embed(title='MORE', description='Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com')
 
         await message.channel.send(embed=em)
 
@@ -346,13 +342,7 @@ class BotClient(discord.AutoShardedClient):
                 if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids:
                     await vc.disconnect()
 
-            for f in os.listdir('SOUNDS'):
-                s = session.query(Sound).filter(Sound.id == int(f)).first()
-
-                if s is None or (s.last_used is not None and s.last_used + self.cache_length <= time.time()):
-                    os.remove('SOUNDS/{}'.format(f))
-
-            await asyncio.sleep(15)
+            await asyncio.sleep(30)
 
 
     async def wait_for_file(self, message, stripped, server):
@@ -649,7 +639,7 @@ class BotClient(discord.AutoShardedClient):
 
         if 'new' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(Sound.id.desc()):
-                if length < 1650:
+                if length < 1900:
                     content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
@@ -658,7 +648,7 @@ class BotClient(discord.AutoShardedClient):
 
         elif 'popular' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(Sound.plays.desc()):
-                if length < 1650:
+                if length < 1900:
                     content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
@@ -667,7 +657,7 @@ class BotClient(discord.AutoShardedClient):
 
         elif 'random' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()):
-                if length < 1650:
+                if length < 1900:
                     content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
@@ -676,7 +666,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
-                if length < 1650:
+                if length < 1900:
                     content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
