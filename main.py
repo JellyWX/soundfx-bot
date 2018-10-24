@@ -169,16 +169,6 @@ class BotClient(discord.AutoShardedClient):
             else:
                 user.join_sound = None
 
-        elif before.channel is not None and after.channel is None \
-            and user.leave_sound is not None:
-
-            if user.leave_sound.public:
-
-                await self.play_sound(member.guild, member, member, user.leave_sound, server)
-                print('Playing leave sound')
-            else:
-                user.leave_sound = None
-
 
     async def on_message(self, message):
 
@@ -711,7 +701,7 @@ class BotClient(discord.AutoShardedClient):
             sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
             if user is None:
-                user = User(id=message.author.id, join_sound=None, leave_sound=None)
+                user = User(id=message.author.id, join_sound=None)
                 session.add(user)
                 session.commit()
 
