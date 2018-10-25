@@ -256,7 +256,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://sfx.jellywx.co.uk/help/'.format(self.user.name))
+        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://jellywx.co.uk/articles/soundfx_help'.format(self.user.name))
         await message.channel.send(embed=embed)
 
 
