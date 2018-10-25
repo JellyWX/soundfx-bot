@@ -46,7 +46,6 @@ class BotClient(discord.AutoShardedClient):
             'popular' : self.search,
             'random' : self.search,
             'greet' : self.greet,
-            'review' : self.review,
             'invite' : self.info
         }
 
