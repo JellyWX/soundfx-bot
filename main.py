@@ -14,6 +14,7 @@ from configparser import SafeConfigParser # read config
 import traceback # error grabbing
 from hashlib import md5 # used for checking uploaded files
 import io
+import sqlalchemy
 
 from sqlalchemy.sql.expression import func
 
@@ -186,7 +187,10 @@ class BotClient(discord.AutoShardedClient):
 
         try:
             if await self.get_cmd(message):
-                session.commit()
+                try:
+                    session.commit()
+                except sqlalchemy.exc.InvalidRequestError:
+                    session.rollback()
 
         except Exception as e:
             traceback.print_exc()
