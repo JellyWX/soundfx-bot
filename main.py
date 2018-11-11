@@ -170,6 +170,11 @@ class BotClient(discord.AutoShardedClient):
                 user.join_sound = None
 
 
+    async def on_error(self, e, *a, **k):
+        session.rollback()
+        raise
+
+
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
@@ -187,10 +192,7 @@ class BotClient(discord.AutoShardedClient):
 
         try:
             if await self.get_cmd(message):
-                try:
-                    session.commit()
-                except sqlalchemy.exc.InvalidRequestError:
-                    session.rollback()
+                session.commit()
 
         except Exception as e:
             traceback.print_exc()
