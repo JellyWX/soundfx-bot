@@ -4,7 +4,6 @@ from ctypes.util import find_library
 import discord ## pip3 install git+...
 import sys
 import os
-import subprocess # for Espeak
 import aiohttp ## pip3 install aiohttp
 import magic ## pip3 install python-magic
 import asyncio
@@ -47,7 +46,7 @@ class BotClient(discord.AutoShardedClient):
             'popular' : self.search,
             'random' : self.search,
             'greet' : self.greet,
-            'invite' : self.info
+            'invite' : self.info,
         }
 
         self.timeouts = {}
@@ -293,7 +292,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def more(self, message, stripped, server):
 
-        em = discord.Embed(title='MORE', description='Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com')
+        em = discord.Embed(title='MORE', description='Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com/premium')
 
         await message.channel.send(embed=em)
 
