@@ -401,9 +401,8 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send('File not recognized as being a valid audio file.')
 
                 else:
-                    print(len(out))
                     out = zlib.compress(out)
-                    print(len(out))
+                    m.update(out)
 
                     if s is not None:
                         self.delete_sound(sound)
