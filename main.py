@@ -5,7 +5,6 @@ import discord ## pip3 install git+...
 import sys
 import os
 import aiohttp ## pip3 install aiohttp
-import magic ## pip3 install python-magic
 import asyncio
 import json # send requests
 import time # check delays
@@ -14,6 +13,8 @@ import traceback # error grabbing
 from hashlib import md5 # used for checking uploaded files
 import io
 import sqlalchemy
+import subprocess
+import zlib
 
 from sqlalchemy.sql.expression import func
 
@@ -381,34 +382,37 @@ class BotClient(discord.AutoShardedClient):
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
-            if msg.attachments == [] or not msg.attachments[0].filename.lower().endswith(('mp3', 'ogg')):
+            if msg.attachments == []:
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
-            elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
-                await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
+            #elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
+            #    await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 m = md5()
+                r = None
+                url = msg.attachments[0].url
 
-                async with aiohttp.ClientSession() as cs:
-                    async with cs.get(msg.attachments[0].url) as request:
-                        r = await request.read()
-                        mime = magic.from_buffer(r, mime=True)
-                        m.update(r)
+                sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
 
-                if mime in ['audio/mpeg', 'audio/ogg']:
+                out = sub.stdout.read()
+
+                if len(out) < 1:
+                    await message.channel.send('File not recognized as being a valid audio file.')
+
+                else:
+                    print(len(out))
+                    out = zlib.compress(out)
+                    print(len(out))
 
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, server=server, user=user, name=stripped, plays=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
+                    sound = Sound(url=url, src=out, server=server, user=user, name=stripped, plays=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
 
                     session.add(sound)
 
                     response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from discord.**'.format(name=stripped, prefix=server.prefix))
-
-                else:
-                    await message.channel.send('Please only upload MP3s or OGGs. If you *did* upload an MP3, it is likely corrupted or encoded wrongly. To resolve, visit https://audio.online-convert.com/convert-to-ogg and convert your file to an OGG.'.format(mime))
 
 
     async def play(self, message, stripped, server):
@@ -496,35 +500,8 @@ class BotClient(discord.AutoShardedClient):
             if voice.is_playing():
                 voice.stop()
 
-            if self.force_download:
-                downloaded = [int(f) for f in os.listdir('SOUNDS')]
-
-                if sound.id in downloaded:
-                    print('Sound cached, playing from file...')
-
-                else:
-                    print('Sound not cached, attempting to cache...')
-
-                    async with aiohttp.ClientSession() as csession:
-                        async with csession.get(sound.url) as resp:
-                            if resp.status != 200:
-                                await channel.send('Sound file couldn\'t be loaded. Try again later, or consider re-uploading it. This can happen if the file is deleted or permission levels change.')
-                                return
-
-                            t = await resp.read()
-                            if sound.hash is None:
-                                m = md5()
-                                m.update(t)
-                                sound.hash = m.hexdigest()
-
-                            with open('SOUNDS/{}'.format(sound.id), 'wb') as f:
-                                f.write(t)
-
-                voice.play(discord.FFmpegPCMAudio('SOUNDS/{}'.format(sound.id)))
-
             else:
-                print('Consider enabling force download in config.ini')
-                voice.play(discord.FFmpegPCMAudio(sound.url))
+                voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
             sound.last_used = time.time()
 

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean, Text, LargeBinary
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
 import configparser
@@ -37,7 +38,8 @@ class Sound(Base):
     id = Column( Integer, primary_key=True )
     name = Column( String(20) )
 
-    url = Column( String(120) )
+    url = Column( Text )
+    src = Column( LargeBinary(length=(2**32)-1) )
     last_used = Column( Integer )
     plays = Column( Integer )
 
