@@ -389,11 +389,10 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
-                m = md5()
                 r = None
                 url = msg.attachments[0].url
 
-                sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+                sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-map_metadata', '-1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
 
                 out = sub.stdout.read()
 
@@ -402,12 +401,11 @@ class BotClient(discord.AutoShardedClient):
 
                 else:
                     out = zlib.compress(out)
-                    m.update(out)
 
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=url, src=out, server=server, user=user, name=stripped, plays=0, hash=m.hexdigest(), big=msg.attachments[0].size > 500000)
+                    sound = Sound(url=url, src=out, server=server, user=user, name=stripped, plays=0, big=msg.attachments[0].size > 500000)
 
                     session.add(sound)
 

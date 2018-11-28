@@ -48,7 +48,6 @@ class Sound(Base):
 
     public = Column( Boolean, nullable=False, default=True )
 
-    hash = Column( String(32) )
     big = Column( Boolean, nullable=False, default=False )
 
 
