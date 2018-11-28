@@ -27,7 +27,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.color = 0xff3838
 
-        self.MAX_SOUNDS = 9
+        self.MAX_SOUNDS = 8
 
         self.commands = {
             'ping' : self.ping,
@@ -50,7 +50,6 @@ class BotClient(discord.AutoShardedClient):
             'invite' : self.info,
         }
 
-        self.timeouts = {}
 
         self.config = SafeConfigParser()
         self.config.read('config.ini')
@@ -104,8 +103,6 @@ class BotClient(discord.AutoShardedClient):
     async def on_guild_remove(self, guild):
         await self.send()
 
-        await self.leave_cleanup()
-
 
     async def welcome(self, guild, *args):
         if isinstance(guild, discord.Message):
@@ -127,28 +124,6 @@ class BotClient(discord.AutoShardedClient):
             user.join_sound_id = None
 
         s.delete(synchronize_session='fetch')
-
-
-    async def leave_cleanup(self, *args):
-        all_ids = [g.id for g in self.guilds]
-
-        servers = session.query(Server).filter(Server.id.notin_(all_ids))
-
-        for s in servers:
-            s_ids = [x.id for x in s.sounds]
-            print(s_ids)
-
-            u = session.query(User).filter(User.join_sound_id.in_(s_ids))
-            for user in u:
-                print('resetting join sound')
-                user.join_sound = None
-                user.join_sound_id = None
-
-            s.sounds.delete(synchronize_session='fetch')
-
-        servers.delete(synchronize_session='fetch')
-
-        session.commit()
 
 
     async def on_voice_state_update(self, member, before, after):
@@ -215,8 +190,6 @@ class BotClient(discord.AutoShardedClient):
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
         if command is not None:
-            self.timeouts[message.guild.id] = time.time()
-
             if command in self.commands.keys():
                 await self.commands[command](message, stripped, server)
                 return True
@@ -328,16 +301,11 @@ class BotClient(discord.AutoShardedClient):
         while not client.is_closed():
             ids = []
 
-            for guild_id, last_time in self.timeouts.copy().items():
-                if time.time() - 300 >= last_time:
-                    ids.append(guild_id)
-                    del self.timeouts[guild_id]
-
             for vc in self.voice_clients:
-                if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids:
+                if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids or not vc.is_playing():
                     await vc.disconnect()
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(10)
 
 
     async def wait_for_file(self, message, stripped, server):
