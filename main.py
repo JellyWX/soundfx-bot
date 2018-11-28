@@ -385,8 +385,8 @@ class BotClient(discord.AutoShardedClient):
             if msg.attachments == []:
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
-            #elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
-            #    await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
+            elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
+                await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
                 m = md5()
@@ -500,6 +500,17 @@ class BotClient(discord.AutoShardedClient):
                 voice.stop()
 
             else:
+                if sound.src is None:
+                    m = md5()
+                    sub = subprocess.Popen(('ffmpeg', '-i', sound.url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+
+                    out = sub.stdout.read()
+                    out = zlib.compress(out)
+                    m.update(out)
+
+                    sound.src = out
+                    sound.hash = m.hexdigest()
+
                 voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
             sound.last_used = time.time()
@@ -580,9 +591,6 @@ class BotClient(discord.AutoShardedClient):
         count = server.sounds.filter(Sound.public).count()
 
         if s is not None:
-            if s.locked:
-                await message.channel.send('This sound has been locked due to inappropriate content. Your server can still use it, but it cannot go public. If you have an issue with this, please come talk to us (in a civil manner) at our discord.')
-                return
 
             s.public = not s.public
             await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))

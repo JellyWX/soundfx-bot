@@ -39,16 +39,14 @@ class Sound(Base):
     name = Column( String(20) )
 
     url = Column( Text )
-    src = Column( LargeBinary(length=(2**32)-1) )
+    src = Column( LONGBLOB )
     last_used = Column( Integer )
     plays = Column( Integer )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
     uploader_id = Column( BigInteger, ForeignKey('users.id') )
 
-    public = Column( Boolean, nullable=False, default=False )
-    safe = Column( Boolean, nullable=False, default=False )
-    locked = Column( Boolean, nullable=False, default=False)
+    public = Column( Boolean, nullable=False, default=True )
 
     hash = Column( String(32) )
     big = Column( Boolean, nullable=False, default=False )
