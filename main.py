@@ -33,33 +33,31 @@ class BotClient(discord.AutoShardedClient):
             'ping' : self.ping,
             'help' : self.help,
             'info' : self.info,
+            'more' : self.more,
+            'invite' : self.info,
+
             'prefix' : self.change_prefix,
             'upload' : self.wait_for_file,
+
             'play' : self.play,
+            'stop' : self.stop,
+
             'list' : self.list,
             'delete' : self.delete,
-            'stop' : self.stop,
-            'more' : self.more,
             'roles' : self.role,
+
+            'greet' : self.greet,
             'public' : self.public,
+
             'search' : self.search,
             'new' : self.search,
             'popular' : self.search,
             'random' : self.search,
-            'greet' : self.greet,
-            'invite' : self.info,
         }
 
 
         self.config = SafeConfigParser()
         self.config.read('config.ini')
-
-        self.force_download = self.config.get('DEFAULT', 'FORCE_DOWNLOAD').lower() == 'yes'
-
-        if self.force_download and 'SOUNDS' not in os.listdir():
-            os.mkdir('SOUNDS')
-
-        self.trusted_ids = self.config.get('DEFAULT', 'TRUSTED_IDS').replace(' ', '').split(',')
 
 
     async def send(self):
@@ -116,6 +114,63 @@ class BotClient(discord.AutoShardedClient):
                 continue
 
 
+    async def check_and_play(self, guild, channel, caller, sound, server):
+        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
+            for role in caller.roles:
+                if role.id in server.roles:
+                    break
+            else:
+                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+
+        if caller.voice is None:
+            await channel.send('You aren\'t in a voice channel.')
+
+        elif not caller.voice.channel.permissions_for(guild.me).connect:
+            await channel.send('No permissions to connect to channel.')
+
+        else:
+            await self.play_sound(caller.voice.channel, sound)
+
+
+    async def play_sound(self, v_c, sound):
+        try:
+            voice = await v_c.connect()
+        except discord.errors.ClientException:
+            voice = [v for v in self.voice_clients if v.channel.guild == v_c.guild][0]
+            if voice.channel != v_c:
+                await voice.disconnect()
+                voice = await v_c.connect()
+
+        if voice.is_playing():
+            voice.stop()
+
+        else:
+            if sound.src is None:
+                sound.src = self.store(sound.url)
+
+            voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
+
+        sound.last_used = time.time()
+
+        if sound.plays is None:
+            sound.plays = 1
+        else:
+            sound.plays += 1
+
+
+    def store(self, url):
+        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+
+        out = sub.stdout.read()
+        if len(out) < 1:
+            return b''
+
+        else:
+            out = zlib.compress(out)
+
+            return out
+
+
     def delete_sound(self, s):
         u = session.query(User).filter(User.join_sound_id == s.first().id)
         for user in u:
@@ -134,9 +189,8 @@ class BotClient(discord.AutoShardedClient):
             m = g.get_member( int(params['user']) )
 
             s = session.query(Sound).get(params['id'])
-            se = session.query(Server).filter_by(id=params['guild']).first()
 
-            await self.play_sound(g, m, m, s, se)
+            await self.play_sound(m.voice.channel, s)
 
             return web.Response(text='OK')
 
@@ -314,18 +368,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send('You must have permission `Manage Server` to perform this command.')
 
 
-    async def cleanup(self):
-        await self.wait_until_ready()
-        while not client.is_closed():
-            ids = []
-
-            for vc in self.voice_clients:
-                if len([m for m in vc.channel.members if not m.bot]) == 0 or vc.channel.guild.id in ids or not vc.is_playing():
-                    await vc.disconnect()
-
-            await asyncio.sleep(10)
-
-
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
 
@@ -447,63 +489,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send('Not connected to a VC!')
         else:
             await voice[0].disconnect()
-
-
-    async def check_and_play(self, guild, channel, caller, sound, server):
-        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
-            for role in caller.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-
-        if caller.voice is None:
-            await channel.send('You aren\'t in a voice channel.')
-
-        elif not caller.voice.channel.permissions_for(guild.me).connect:
-            await channel.send('No permissions to connect to channel.')
-
-        else:
-            await self.play_sound(caller.voice.channel, sound)
-
-
-    async def play_sound(self, v_c, sound):
-        try:
-            voice = await v_c.connect()
-        except discord.errors.ClientException:
-            voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
-            if voice.channel != v_c:
-                await voice.disconnect()
-                voice = await v_c.connect()
-
-        if voice.is_playing():
-            voice.stop()
-
-        else:
-            if sound.src is None:
-                sound.src = self.store(sound.url)
-
-            voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
-
-        sound.last_used = time.time()
-
-        if sound.plays is None:
-            sound.plays = 1
-        else:
-            sound.plays += 1
-
-
-    def store(self, url):
-        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
-
-        out = sub.stdout.read()
-        if len(out) < 1:
-            return b''
-
-        else:
-            out = zlib.compress(out)
-
-            return out
 
 
     async def list(self, message, stripped, server):
@@ -662,6 +647,14 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+
+
+    async def cleanup(self):
+        await self.wait_until_ready()
+        while not client.is_closed():
+
+            [await vc.disconnect() for vc in self.voice_clients if not vc.is_playing()]
+            await asyncio.sleep(180)
 
 
 client = BotClient()
