@@ -5,6 +5,7 @@ import discord ## pip3 install git+...
 import sys
 import os
 import aiohttp ## pip3 install aiohttp
+from aiohttp import web
 import asyncio
 import json # send requests
 import time # check delays
@@ -126,13 +127,8 @@ class BotClient(discord.AutoShardedClient):
         s.delete(synchronize_session='fetch')
 
 
-    async def on_web_ping(self, reader, writer):
-        data = await reader.read(100)
-        print(data.decode())
-
-        writer.write(data)
-        await writer.drain()
-        writer.close()
+    async def on_web_ping(self, request):
+        return web.Response(text='Hello, world!')
 
 
     async def on_voice_state_update(self, member, before, after):
@@ -656,10 +652,15 @@ class BotClient(discord.AutoShardedClient):
 
 client = BotClient()
 
+app = web.Application(debug=True)
+app.add_routes([web.get('/', client.on_web_ping)])
+
+handler = app.make_handler()
+
 try:
     client.loop.create_task(client.cleanup())
 
-    coro = asyncio.start_server(client.on_web_ping, '127.0.0.1', 7765, loop=client.loop)
+    coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
     client.loop.create_task(coro)
 
     client.run(client.config.get('TOKENS', 'bot'), max_messages=50)
