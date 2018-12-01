@@ -33,7 +33,6 @@ class BotClient(discord.AutoShardedClient):
             'ping' : self.ping,
             'help' : self.help,
             'info' : self.info,
-            'more' : self.more,
             'invite' : self.info,
 
             'prefix' : self.change_prefix,
@@ -336,7 +335,7 @@ class BotClient(discord.AutoShardedClient):
   Developer: <@203532103185465344>
   Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
 
-  There is a maximum sound limit per server. You can view this through `{p}more`
+  There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
 
   *If you have enquiries about new features, please send to the discord server*
   *If you have enquiries about bot development for you or your server, please DM me*
@@ -346,13 +345,6 @@ class BotClient(discord.AutoShardedClient):
         await message.channel.send(embed=em)
 
         await message.add_reaction('📬')
-
-
-    async def more(self, message, stripped, server):
-
-        em = discord.Embed(title='MORE', description='Want unlimited sounds and bigger uploads? Subscribe to the bot! https://fusiondiscordbots.com/premium')
-
-        await message.channel.send(embed=em)
 
 
     async def role(self, message, stripped, server):
@@ -396,7 +388,7 @@ class BotClient(discord.AutoShardedClient):
         user = session.query(User).filter(User.id == message.author.id).first()
 
         if len(user.sounds) >= self.MAX_SOUNDS and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or type `{prefix}more` to learn ways to get more sounds! https://discord.gg/v6YMfjj'.format(self.MAX_SOUNDS, prefix=server.prefix))
+            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://fusiondiscordbots.com/premium'.format(self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
@@ -411,7 +403,7 @@ class BotClient(discord.AutoShardedClient):
             sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
             s = sound.first()
 
-            await message.channel.send('Saving as: `{}`. Send an MP3/OGG file <500KB (1MB for premium users) or send any other message to cancel.'.format(stripped))
+            await message.channel.send('Saving as: `{}`. Send an audio file <500KB (1MB for premium users) or send any other message to cancel.'.format(stripped))
 
             msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
