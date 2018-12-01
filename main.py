@@ -126,6 +126,15 @@ class BotClient(discord.AutoShardedClient):
         s.delete(synchronize_session='fetch')
 
 
+    async def on_web_ping(self, reader, writer):
+        data = await reader.read(100)
+        print(data.decode())
+
+        writer.write(data)
+        await writer.drain()
+        writer.close()
+
+
     async def on_voice_state_update(self, member, before, after):
         user = session.query(User).filter(User.id == member.id).first()
         if user is None:
@@ -649,6 +658,10 @@ client = BotClient()
 
 try:
     client.loop.create_task(client.cleanup())
+
+    coro = asyncio.start_server(client.on_web_ping, '127.0.0.1', 7765, loop=client.loop)
+    client.loop.create_task(coro)
+
     client.run(client.config.get('TOKENS', 'bot'), max_messages=50)
 except Exception as e:
     print('Error detected. Restarting in 15 seconds.')
