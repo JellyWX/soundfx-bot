@@ -11,7 +11,6 @@ import json # send requests
 import time # check delays
 from configparser import SafeConfigParser # read config
 import traceback # error grabbing
-from hashlib import md5 # used for checking uploaded files
 import io
 import sqlalchemy
 import subprocess
@@ -128,7 +127,21 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_web_ping(self, request):
-        return web.Response(text='Hello, world!')
+        params = request.rel_url.query
+
+        if all(x in params.keys() for x in ('id', 'user', 'guild')):
+            g = self.get_guild( int(params['guild']) )
+            m = g.get_member( int(params['user']) )
+
+            s = session.query(Sound).get(params['id'])
+            se = session.query(Server).filter_by(id=params['guild']).first()
+
+            await self.play_sound(g, m, m, s, se)
+
+            return web.Response(text='OK')
+
+        else:
+            raise "Missing parameters"
 
 
     async def on_voice_state_update(self, member, before, after):
@@ -143,7 +156,7 @@ class BotClient(discord.AutoShardedClient):
 
             if user.join_sound.public:
 
-                await self.play_sound(member.guild, member, member, user.join_sound, server)
+                await self.play_sound(member.voice.channel, user.join_sound)
                 print('Playing join sound')
 
             else:
@@ -362,23 +375,16 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
-                r = None
-                url = msg.attachments[0].url
-
-                sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-map_metadata', '-1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
-
-                out = sub.stdout.read()
+                out = self.store(msg.attachments[0].url)
 
                 if len(out) < 1:
                     await message.channel.send('File not recognized as being a valid audio file.')
 
                 else:
-                    out = zlib.compress(out)
-
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=url, src=out, server=server, user=user, name=stripped, plays=0, big=msg.attachments[0].size > 500000)
+                    sound = Sound(url=msg.attachments[0].url, src=out, server=server, user=user, name=stripped, plays=0, big=msg.attachments[0].size > 500000)
 
                     session.add(sound)
 
@@ -413,7 +419,7 @@ class BotClient(discord.AutoShardedClient):
 
                 await message.channel.send('Mutiple sounds with name specified. Consider using `{}play ID:1234` to specify an ID. Playing {} (ID {}) from {}...'.format( server.prefix, s.name, s.id, self.get_guild(s.server_id).name ))
 
-                await self.play_sound(message.guild, message.channel, message.author, s, server)
+                await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
             elif sq.count() == 0:
 
@@ -428,10 +434,10 @@ class BotClient(discord.AutoShardedClient):
                     )
                 )
 
-                await self.play_sound(message.guild, message.channel, message.author, s, server)
+                await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
         else:
-            await self.play_sound(message.guild, message.channel, message.author, s, server)
+            await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
 
     async def stop(self, message, stripped, server):
@@ -443,14 +449,13 @@ class BotClient(discord.AutoShardedClient):
             await voice[0].disconnect()
 
 
-    async def play_sound(self, guild, channel, caller, sound, server):
+    async def check_and_play(self, guild, channel, caller, sound, server):
         if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
             for role in caller.roles:
                 if role.id in server.roles:
                     break
             else:
                 await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
 
         if caller.voice is None:
             await channel.send('You aren\'t in a voice channel.')
@@ -459,37 +464,46 @@ class BotClient(discord.AutoShardedClient):
             await channel.send('No permissions to connect to channel.')
 
         else:
-            try:
-                voice = await caller.voice.channel.connect()
-            except discord.errors.ClientException:
-                voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
-                if voice.channel != caller.voice.channel:
-                    await voice.disconnect()
-                    voice = await caller.voice.channel.connect()
+            await self.play_sound(caller.voice.channel, sound)
 
-            if voice.is_playing():
-                voice.stop()
 
-            else:
-                if sound.src is None:
-                    m = md5()
-                    sub = subprocess.Popen(('ffmpeg', '-i', sound.url, '-loglevel', 'error', '-ar', '16000', '-aq', '0.05', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+    async def play_sound(self, v_c, sound):
+        try:
+            voice = await v_c.connect()
+        except discord.errors.ClientException:
+            voice = [v for v in self.voice_clients if v.channel.guild == guild][0]
+            if voice.channel != v_c:
+                await voice.disconnect()
+                voice = await v_c.connect()
 
-                    out = sub.stdout.read()
-                    out = zlib.compress(out)
-                    m.update(out)
+        if voice.is_playing():
+            voice.stop()
 
-                    sound.src = out
-                    sound.hash = m.hexdigest()
+        else:
+            if sound.src is None:
+                sound.src = self.store(sound.url)
 
-                voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
+            voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
-            sound.last_used = time.time()
+        sound.last_used = time.time()
 
-            if sound.plays is None:
-                sound.plays = 1
-            else:
-                sound.plays += 1
+        if sound.plays is None:
+            sound.plays = 1
+        else:
+            sound.plays += 1
+
+
+    def store(self, url):
+        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+
+        out = sub.stdout.read()
+        if len(out) < 1:
+            return b''
+
+        else:
+            out = zlib.compress(out)
+
+            return out
 
 
     async def list(self, message, stripped, server):
@@ -653,7 +667,7 @@ class BotClient(discord.AutoShardedClient):
 client = BotClient()
 
 app = web.Application(debug=True)
-app.add_routes([web.get('/', client.on_web_ping)])
+app.add_routes([web.get('/play', client.on_web_ping)])
 
 handler = app.make_handler()
 
