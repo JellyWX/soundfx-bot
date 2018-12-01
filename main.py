@@ -19,7 +19,7 @@ import zlib
 from sqlalchemy.sql.expression import func
 
 
-check_digits = lambda x: all( [y in '0123456789' for y in x] )
+check_digits = lambda x: all( [y in '0123456789' for y in x] ) and len(x)
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
@@ -156,6 +156,18 @@ class BotClient(discord.AutoShardedClient):
             sound.plays = 1
         else:
             sound.plays += 1
+
+
+    async def check_premium(self, user):
+        premium = False
+
+        async with aiohttp.ClientSession() as cs:
+            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(user.id)) as request:
+                t = await request.read()
+                if 'soundfx' in str(t):
+                    premium = True
+
+        return premium
 
 
     def store(self, url):
@@ -379,14 +391,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        premium = False
-
-        async with aiohttp.ClientSession() as cs:
-            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(message.author.id)) as request:
-                t = await request.read()
-                if 'soundfx' in str(t):
-                    premium = True
-
+        premium = await self.check_premium(message.author)
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
@@ -624,9 +629,6 @@ class BotClient(discord.AutoShardedClient):
         if stripped == '' and user.join_sound is not None:
             user.join_sound = None
             await message.channel.send('You have unassigned your greet sound')
-
-        elif stripped == '':
-            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
 
         elif check_digits(stripped):
             id = int( stripped )
