@@ -195,9 +195,8 @@ class BotClient(discord.AutoShardedClient):
     async def on_web_ping(self, request):
         params = request.rel_url.query
 
-        if all(x in params.keys() for x in ('id', 'user', 'guild')):
-            g = self.get_guild( int(params['guild']) )
-            m = g.get_member( int(params['user']) )
+        if all(x in params.keys() for x in ('id', 'user')):
+            m = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None][0]
 
             s = session.query(Sound).get(params['id'])
 
