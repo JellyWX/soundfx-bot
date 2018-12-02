@@ -459,7 +459,7 @@ class BotClient(discord.AutoShardedClient):
         if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
-        if stripped.startswith('id:') and check_digits(stripped[3:]):
+        elif stripped.startswith('id:') and check_digits(stripped[3:]):
             id = int( stripped[3:] )
             s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
 
