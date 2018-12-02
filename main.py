@@ -15,6 +15,8 @@ import io
 import sqlalchemy
 import subprocess
 import zlib
+import concurrent.futures
+from functools import partial
 
 from sqlalchemy.sql.expression import func
 
@@ -57,6 +59,13 @@ class BotClient(discord.AutoShardedClient):
 
         self.config = SafeConfigParser()
         self.config.read('config.ini')
+
+        self.executor = concurrent.futures.ThreadPoolExecutor()
+
+
+    async def do_blocking(self, method):
+        a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
+        return [x.result() for x in a][0]
 
 
     async def send(self):
@@ -144,7 +153,7 @@ class BotClient(discord.AutoShardedClient):
             voice.stop()
 
         if sound.src is None:
-            sound.src = self.store(sound.url)
+            sound.src = await self.store(sound.url)
 
         voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
@@ -170,7 +179,12 @@ class BotClient(discord.AutoShardedClient):
         return premium
 
 
-    def store(self, url):
+    async def store(self, url):
+        m = await self.do_blocking( partial(self.b_store, url) )
+        return m
+
+
+    def b_store(self, url):
         sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
 
         out = sub.stdout.read()
@@ -414,7 +428,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
 
             else:
-                out = self.store(msg.attachments[0].url)
+                out = await self.store(msg.attachments[0].url)
 
                 if len(out) < 1:
                     await message.channel.send('File not recognized as being a valid audio file.')
