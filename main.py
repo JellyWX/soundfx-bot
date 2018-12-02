@@ -141,6 +141,9 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def play_sound(self, v_c, sound):
+        if sound.src is None:
+            sound.src = await self.store(sound.url)
+
         try:
             voice = await v_c.connect()
         except discord.errors.ClientException:
@@ -151,9 +154,6 @@ class BotClient(discord.AutoShardedClient):
 
         if voice.is_playing():
             voice.stop()
-
-        if sound.src is None:
-            sound.src = await self.store(sound.url)
 
         voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
