@@ -144,6 +144,15 @@ class BotClient(discord.AutoShardedClient):
         if sound.src is None:
             sound.src = await self.store(sound.url)
 
+        src = zlib.decompress(sound.src)
+        pipe = True
+
+        if sound.big:
+            c = await self.check_premium(sound.uploader_id)
+            if not c:
+                src = 'no_premium.opus'
+                pipe = False
+
         try:
             voice = await v_c.connect()
         except discord.errors.ClientException:
@@ -155,7 +164,7 @@ class BotClient(discord.AutoShardedClient):
         if voice.is_playing():
             voice.stop()
 
-        voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
+        voice.play(discord.FFmpegPCMAudio(src, pipe=pipe))
 
         sound.last_used = time.time()
 
@@ -171,7 +180,7 @@ class BotClient(discord.AutoShardedClient):
         premium = False
 
         async with aiohttp.ClientSession() as cs:
-            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(user.id)) as request:
+            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(user)) as request:
                 t = await request.read()
                 if 'soundfx' in str(t):
                     premium = True
@@ -397,7 +406,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
                 return
 
-        premium = await self.check_premium(message.author)
+        premium = await self.check_premium(message.author.id)
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
