@@ -143,11 +143,10 @@ class BotClient(discord.AutoShardedClient):
         if voice.is_playing():
             voice.stop()
 
-        else:
-            if sound.src is None:
-                sound.src = self.store(sound.url)
+        if sound.src is None:
+            sound.src = self.store(sound.url)
 
-            voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
+        voice.play(discord.FFmpegPCMAudio(zlib.decompress(sound.src), pipe=True))
 
         sound.last_used = time.time()
 
@@ -155,6 +154,8 @@ class BotClient(discord.AutoShardedClient):
             sound.plays = 1
         else:
             sound.plays += 1
+
+        session.commit()
 
 
     async def check_premium(self, user):
