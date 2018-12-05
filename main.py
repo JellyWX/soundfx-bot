@@ -194,7 +194,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     def b_store(self, url):
-        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '16000', '-aq', '1', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '20000', '-aq', '3', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
 
         out = sub.stdout.read()
         if len(out) < 1:
