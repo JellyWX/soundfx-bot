@@ -479,7 +479,14 @@ class BotClient(discord.AutoShardedClient):
 
             if sq.count() > 1:
 
-                await message.channel.send('Mutiple sounds with name specified. Consider using `{}play ID:1234` to specify an ID. Playing {} (ID {}) from {}...'.format( server.prefix, s.name, s.id, self.get_guild(s.server_id).name ))
+                g = self.get_guild(s.server_id)
+
+                if g is not None:
+                    name = g.name
+                else:
+                    name = None
+
+                await message.channel.send('Mutiple sounds with name specified. Consider using `{}play ID:1234` to specify an ID. Playing {} (ID {}) from {}...'.format( server.prefix, s.name, s.id, name ))
 
                 await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
@@ -488,10 +495,17 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send('Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
 
             else:
+                g = self.get_guild(s.server_id)
+
+                if g is not None:
+                    name = g.name
+                else:
+                    name = None
+
                 await message.channel.send('Playing public sound {name} (ID {id}) from {guild}'.format(
                     name = s.name,
                     id = s.id,
-                    guild = self.get_guild(s.server_id).name,
+                    guild = name,
                     pref = server.prefix
                     )
                 )
@@ -597,7 +611,14 @@ class BotClient(discord.AutoShardedClient):
         if 'new' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(Sound.id.desc()):
                 if length < 1900:
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+                    g = self.get_guild(sound.server_id)
+
+                    if g is not None:
+                        name = g.name
+                    else:
+                        name = None
+
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
@@ -615,7 +636,14 @@ class BotClient(discord.AutoShardedClient):
         elif 'random' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()):
                 if length < 1900:
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+                    g = self.get_guild(sound.server_id)
+
+                    if g is not None:
+                        name = g.name
+                    else:
+                        name = None
+
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
@@ -624,7 +652,14 @@ class BotClient(discord.AutoShardedClient):
         else:
             for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
                 if length < 1900:
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, self.get_guild(sound.server_id).name)
+                    g = self.get_guild(sound.server_id)
+
+                    if g is not None:
+                        name = g.name
+                    else:
+                        name = None
+
+                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
