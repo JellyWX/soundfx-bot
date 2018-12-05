@@ -14,7 +14,6 @@ import traceback # error grabbing
 import io
 import sqlalchemy
 import subprocess
-import zlib
 import concurrent.futures
 from functools import partial
 
@@ -144,7 +143,7 @@ class BotClient(discord.AutoShardedClient):
         if sound.src is None:
             sound.src = await self.store(sound.url)
 
-        src = zlib.decompress(sound.src)
+        src = sound.src
         pipe = True
 
         if sound.big:
@@ -194,15 +193,13 @@ class BotClient(discord.AutoShardedClient):
 
 
     def b_store(self, url):
-        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-ar', '20000', '-aq', '3', '-f', 'ogg', 'pipe:1'), stdout=subprocess.PIPE)
+        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'), stdout=subprocess.PIPE)
 
         out = sub.stdout.read()
         if len(out) < 1:
             return b''
 
         else:
-            out = zlib.compress(out)
-
             return out
 
 
