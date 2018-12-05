@@ -220,7 +220,13 @@ class BotClient(discord.AutoShardedClient):
         params = request.rel_url.query
 
         if all(x in params.keys() for x in ('id', 'user')):
-            m = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None][0]
+            m = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None]
+
+            if len(m) == 0:
+                return web.Response(text='Not in voice channel', status=400)
+
+            else:
+                m = m[0]
 
             s = session.query(Sound).get(params['id'])
 
@@ -229,7 +235,7 @@ class BotClient(discord.AutoShardedClient):
             return web.Response(text='OK')
 
         else:
-            raise "Missing parameters"
+            return web.Response(text='Missing parameters', status=400)
 
 
     async def on_voice_state_update(self, member, before, after):
