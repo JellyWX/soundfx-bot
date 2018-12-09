@@ -714,7 +714,7 @@ class BotClient(discord.AutoShardedClient):
 
 client = BotClient()
 
-app = web.Application(debug=True)
+app = web.Application()
 app.add_routes([web.get('/play', client.on_web_ping)])
 
 handler = app.make_handler()
