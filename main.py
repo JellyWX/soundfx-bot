@@ -203,10 +203,6 @@ class BotClient(discord.AutoShardedClient):
 
     def delete_sound(self, s):
         u = session.query(User).filter(User.join_sound_id == s.first().id)
-        for user in u:
-            print('resetting join sound for {}'.format(user.id))
-            user.join_sound = None
-            user.join_sound_id = None
 
         s.delete(synchronize_session='fetch')
 
