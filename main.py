@@ -165,8 +165,6 @@ class BotClient(discord.AutoShardedClient):
 
         voice.play(discord.FFmpegPCMAudio(src, pipe=pipe))
 
-        sound.last_used = time.time()
-
         if sound.plays is None:
             sound.plays = 1
         else:
@@ -453,7 +451,7 @@ class BotClient(discord.AutoShardedClient):
 
                     session.add(sound)
 
-                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from discord.**'.format(name=stripped, prefix=server.prefix))
+                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from Discord.**'.format(name=stripped, prefix=server.prefix))
 
 
     async def play(self, message, stripped, server):

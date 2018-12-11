@@ -40,7 +40,6 @@ class Sound(Base):
 
     url = Column( Text )
     src = Column( LONGBLOB )
-    last_used = Column( Integer )
     plays = Column( Integer )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
