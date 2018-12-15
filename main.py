@@ -337,7 +337,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://jellywx.co.uk/articles/soundfx_help'.format(self.user.name))
+        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://soundfx.jellywx.co.uk/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
 
@@ -353,8 +353,9 @@ class BotClient(discord.AutoShardedClient):
 
   **Welcome to SFX!**
   Developer: <@203532103185465344>
-  Find me on https://discord.gg/v6YMfjj and on https://github.com/JellyWX :)
+  Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
 
+  An online dashboard is available! Visit https://soundfx.jellywx.co.uk/dashboard
   There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
 
   *If you have enquiries about new features, please send to the discord server*
