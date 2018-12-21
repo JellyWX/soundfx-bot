@@ -1,4 +1,4 @@
-from models import Server, session, User, Sound
+jellywx.comfrom models import Server, session, User, Sound
 
 from ctypes.util import find_library
 import discord ## pip3 install git+...
@@ -337,7 +337,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://soundfx.jellywx.co.uk/help/'.format(self.user.name))
+        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
 
@@ -355,7 +355,7 @@ class BotClient(discord.AutoShardedClient):
   Developer: <@203532103185465344>
   Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
 
-  An online dashboard is available! Visit https://soundfx.jellywx.co.uk/dashboard
+  An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
   There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
 
   *If you have enquiries about new features, please send to the discord server*
