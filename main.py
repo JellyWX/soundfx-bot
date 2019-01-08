@@ -1,4 +1,4 @@
-jellywx.comfrom models import Server, session, User, Sound
+from models import Server, session, User, Sound
 
 from ctypes.util import find_library
 import discord ## pip3 install git+...
