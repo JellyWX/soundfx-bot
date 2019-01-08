@@ -128,6 +128,7 @@ class BotClient(discord.AutoShardedClient):
                     break
             else:
                 await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
 
         if caller.voice is None:
             await channel.send('You aren\'t in a voice channel.')
