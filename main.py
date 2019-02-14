@@ -345,22 +345,22 @@ class BotClient(discord.AutoShardedClient):
     async def info(self, message, stripped, server):
         em = discord.Embed(title='INFO', color=self.color, description=
         '''\u200B
-  Default prefix: `?`
+Default prefix: `?`
 
-  Reset prefix: `@{user} prefix ?`
-  Help: `{p}help`
+Reset prefix: `@{user} prefix ?`
+Help: `{p}help`
 
-  Invite me: https://discordapp.com/oauth2/authorize?client_id=430384808200372245&scope=bot&permissions=36703232
+Invite me: https://discordapp.com/oauth2/authorize?client_id=430384808200372245&scope=bot&permissions=36703232
 
-  **Welcome to SFX!**
-  Developer: <@203532103185465344>
-  Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
+**Welcome to SFX!**
+Developer: <@203532103185465344>
+Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
 
-  An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
-  There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
+An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
+There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
 
-  *If you have enquiries about new features, please send to the discord server*
-  *If you have enquiries about bot development for you or your server, please DM me*
+*If you have enquiries about new features, please send to the discord server*
+*If you have enquiries about bot development for you or your server, please DM me*
         '''.format(user=self.user.name, p=server.prefix)
         )
 
@@ -432,14 +432,14 @@ class BotClient(discord.AutoShardedClient):
             if msg.attachments == []:
                 await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
 
-            elif (msg.attachments[0].size > 500000 and not premium) or (msg.attachments[0].size > 1000000 and premium):
-                await message.channel.send('Please only send MP3/OGG files that are under 500kB (1MB if premium user). If your file is an MP3, consider turning it to an OGG for more optimized file size.')
-
             else:
                 out = await self.store(msg.attachments[0].url)
 
                 if len(out) < 1:
                     await message.channel.send('File not recognized as being a valid audio file.')
+
+                elif (len(out) > 350000 and not premium) or (len(out) > 1000000 and premium):
+                    await message.channel.send('Please only send audio files that are under 350kB serverside compressed (1MB if premium user). The bot uses Opus 28kbps compression when storing audio.')
 
                 else:
                     if s is not None:
@@ -675,6 +675,7 @@ class BotClient(discord.AutoShardedClient):
         user = session.query(User).filter(User.id == message.author.id).first()
         stripped = stripped.lower()
 
+
         if stripped == '' and user.join_sound is not None:
             user.join_sound = None
             await message.channel.send('You have unassigned your greet sound')
@@ -728,3 +729,4 @@ except Exception as e:
     time.sleep(15)
 
     os.execl(sys.executable, sys.executable, *sys.argv)
+
