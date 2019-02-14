@@ -22,9 +22,14 @@ Base = declarative_base()
 class Server(Base):
     __tablename__ = 'servers'
 
-    id = Column(Integer, primary_key=True)
-    server = Column(BigInteger, unique=True)
+    map_id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, unique=True)
     prefix = Column( String(5) )
+    roles = Column( NestedMutableJson )
+    sounds = relationship('Sound', backref='server', lazy='dynamic')
+
+    def __repr__(self):
+        return '<Server {}>'.format(self.id)
 
 
 class Sound(Base):
@@ -37,8 +42,8 @@ class Sound(Base):
     src = Column( LONGBLOB )
     plays = Column( Integer )
 
-    server_id = Column( BigInteger )
-    uploader_id = Column( BigInteger )
+    server_id = Column( BigInteger, ForeignKey('servers.id') )
+    uploader_id = Column( BigInteger, ForeignKey('users.id') )
 
     public = Column( Boolean, nullable=False, default=True )
 
@@ -48,13 +53,16 @@ class Sound(Base):
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True)
-    user = Column(BigInteger, unique=True)
+    map_id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, unique=True)
 
-    greet = Column( Integer, nullable=True )
+    join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
+    join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
 
     sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
 
+    def __repr__(self):
+        return '<User {}>'.format(self.id)
 
 
 if passwd:
