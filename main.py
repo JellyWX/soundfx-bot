@@ -445,7 +445,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     if s is not None:
                         self.delete_sound(sound)
 
-                    sound = Sound(url=msg.attachments[0].url, src=out, server=server, user=user, name=stripped, plays=0, big=msg.attachments[0].size > 500000)
+                    sound = Sound(url=msg.attachments[0].url, src=out, server=server, user=user, name=stripped, plays=0, big=len(out) > 350000)
 
                     session.add(sound)
 
