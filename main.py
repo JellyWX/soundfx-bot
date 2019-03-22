@@ -30,6 +30,8 @@ class BotClient(discord.AutoShardedClient):
 
         self.MAX_SOUNDS = 8
 
+        self.file_indexing = 0
+
         self.commands = {
             'ping' : self.ping,
             'help' : self.help,
@@ -145,13 +147,11 @@ class BotClient(discord.AutoShardedClient):
             sound.src = await self.store(sound.url)
 
         src = sound.src
-        pipe = True
 
         if sound.big:
             c = await self.check_premium(sound.uploader_id)
             if not c:
                 src = 'no_premium.opus'
-                pipe = False
 
         try:
             voice = await v_c.connect()
@@ -164,7 +164,15 @@ class BotClient(discord.AutoShardedClient):
         if voice.is_playing():
             voice.stop()
 
-        voice.play(discord.FFmpegPCMAudio(src, pipe=pipe))
+        self.file_indexing += 1
+        self.file_indexing %= 1000
+
+        filename = '/tmp/file-{}'.format(self.file_indexing)
+
+        with open(filename, 'wb') as f:
+            f.write(src)
+
+        voice.play(discord.FFmpegPCMAudio(filename))
 
         if sound.plays is None:
             sound.plays = 1
