@@ -148,11 +148,6 @@ class BotClient(discord.AutoShardedClient):
 
         src = sound.src
 
-        if sound.big:
-            c = await self.check_premium(sound.uploader_id)
-            if not c:
-                src = 'no_premium.opus'
-
         try:
             voice = await v_c.connect()
         except discord.errors.ClientException:
