@@ -146,35 +146,38 @@ class BotClient(discord.AutoShardedClient):
         if sound.src is None:
             sound.src = await self.store(sound.url)
 
-        src = sound.src
+        perms = v_c.permissions_for(v_c.guild.me)
 
-        try:
-            voice = await v_c.connect()
-        except discord.errors.ClientException:
-            voice = [v for v in self.voice_clients if v.channel.guild == v_c.guild][0]
-            if voice.channel != v_c:
-                await voice.disconnect()
+        if perms.connect() and perms.speak():
+            src = sound.src
+
+            try:
                 voice = await v_c.connect()
+            except discord.errors.ClientException:
+                voice = [v for v in self.voice_clients if v.channel.guild == v_c.guild][0]
+                if voice.channel != v_c:
+                    await voice.disconnect(force=True)
+                    voice = await v_c.connect()
 
-        if voice.is_playing():
-            voice.stop()
+            if voice.is_playing():
+                voice.stop()
 
-        self.file_indexing += 1
-        self.file_indexing %= 1000
+            self.file_indexing += 1
+            self.file_indexing %= 1000
 
-        filename = '/tmp/file-{}'.format(self.file_indexing)
+            filename = '/tmp/file-{}'.format(self.file_indexing)
 
-        with open(filename, 'wb') as f:
-            f.write(src)
+            with open(filename, 'wb') as f:
+                f.write(src)
 
-        voice.play(discord.FFmpegPCMAudio(filename))
+            voice.play(discord.FFmpegPCMAudio(filename))
 
-        if sound.plays is None:
-            sound.plays = 1
-        else:
-            sound.plays += 1
+            if sound.plays is None:
+                sound.plays = 1
+            else:
+                sound.plays += 1
 
-        session.commit()
+            session.commit()
 
 
     async def check_premium(self, user):
@@ -524,7 +527,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         if len(voice) == 0:
             await message.channel.send('Not connected to a VC!')
         else:
-            await voice[0].disconnect()
+            await voice[0].disconnect(force=True)
 
 
     async def list(self, message, stripped, server):
@@ -708,7 +711,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         await self.wait_until_ready()
         while not client.is_closed():
 
-            [await vc.disconnect() for vc in self.voice_clients if not vc.is_playing()]
+            [await vc.disconnect(force=True) for vc in self.voice_clients if not vc.is_playing()]
             await asyncio.sleep(180)
 
 
