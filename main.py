@@ -152,12 +152,14 @@ class BotClient(discord.AutoShardedClient):
             src = sound.src
 
             try:
-                voice = await v_c.connect()
+                voice = await v_c.connect(timeout=5)
             except discord.errors.ClientException:
                 voice = [v for v in self.voice_clients if v.channel.guild == v_c.guild][0]
                 if voice.channel != v_c:
                     await voice.disconnect(force=True)
-                    voice = await v_c.connect()
+                    voice = await v_c.connect(timeout=5)
+            except concurrent.futures._base.TimeoutError:
+                return
 
             if voice.is_playing():
                 voice.stop()
