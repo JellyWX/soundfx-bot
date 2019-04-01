@@ -148,7 +148,7 @@ class BotClient(discord.AutoShardedClient):
 
         perms = v_c.permissions_for(v_c.guild.me)
 
-        if perms.connect() and perms.speak():
+        if perms.connect and perms.speak:
             src = sound.src
 
             try:
