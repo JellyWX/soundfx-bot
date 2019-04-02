@@ -158,7 +158,7 @@ class BotClient(discord.AutoShardedClient):
                 if voice.channel != v_c:
                     await voice.disconnect(force=True)
                     voice = await v_c.connect(timeout=5)
-            except concurrent.futures._base.TimeoutError:
+            except:
                 return
 
             if voice.is_playing():
