@@ -741,7 +741,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await asyncio.sleep(180)
 
 
-client = BotClient()
+client = BotClient(message_cache=False)
 
 app = web.Application()
 app.add_routes([web.get('/play', client.on_web_ping)])
@@ -754,7 +754,7 @@ try:
     coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
     client.loop.create_task(coro)
 
-    client.run(client.config.get('TOKENS', 'bot'), max_messages=50)
+    client.run(client.config.get('TOKENS', 'bot'))
 except Exception as e:
     print('Error detected. Restarting in 15 seconds.')
     print(sys.exc_info())
