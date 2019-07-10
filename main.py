@@ -389,7 +389,7 @@ Developer: <@203532103185465344>
 Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
 
 An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
-There is a maximum sound limit per user. This can be removed by donating at https://fusiondiscordbots.com/premium
+There is a maximum sound limit per user. This can be removed by donating at https://patreon.com/jellywx
 
 *If you have enquiries about new features, please send to the discord server*
 *If you have enquiries about bot development for you or your server, please DM me*
@@ -442,7 +442,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         user = session.query(User).filter(User.id == message.author.id).first()
 
         if len(user.sounds) >= self.MAX_SOUNDS and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://fusiondiscordbots.com/premium'.format(self.MAX_SOUNDS, prefix=server.prefix))
+            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
