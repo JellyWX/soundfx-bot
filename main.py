@@ -386,7 +386,7 @@ Invite me: https://discordapp.com/oauth2/authorize?client_id=430384808200372245&
 
 **Welcome to SFX!**
 Developer: <@203532103185465344>
-Find me on https://discord.gg/q2pRJQZ and on https://github.com/JellyWX :)
+Find me on https://discord.gg/k4BwyZA and on https://github.com/JellyWX :)
 
 An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
 There is a maximum sound limit per user. This can be removed by donating at https://patreon.com/jellywx
