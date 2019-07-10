@@ -191,6 +191,30 @@ class BotClient(discord.AutoShardedClient):
                 if 'soundfx' in str(t):
                     premium = True
 
+        if not premium:
+            roles: typing.List[int] = []
+            p_server = self.get_guild(self.config.get('DEFAULT', 'patreon_server'))
+
+            if p_server is None:
+
+                url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.get('DEFAULT', 'patreon_server'), user)
+
+                head = {
+                    'authorization': self.config.get('TOKENS', 'bot'),
+                    'content-type' : 'application/json'
+                }
+
+                async with self.csession.get(url, headers=head) as resp:
+                    member = await resp.json()
+                    roles = [int(x) for x in member['roles']]
+
+            else:
+                for m in p_server.members:
+                    if m.id == user:
+                        roles.extend([r.id for r in m.roles])
+
+            premium = bool(set([int(self.config.get('DEFAULT', 'donor_role'))]) & set(roles))
+
         return premium
 
 
