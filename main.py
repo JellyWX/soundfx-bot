@@ -1,17 +1,15 @@
 from models import Server, session, User, Sound
 
 from ctypes.util import find_library
-import discord ## pip3 install git+...
+import discord
 import sys
 import os
-import aiohttp ## pip3 install aiohttp
+import aiohttp
 from aiohttp import web
 import asyncio
-import json # send requests
-import time # check delays
-from configparser import SafeConfigParser # read config
-import traceback # error grabbing
-import io
+import json
+from configparser import SafeConfigParser
+import traceback
 import sqlalchemy
 import subprocess
 import concurrent.futures
@@ -95,10 +93,7 @@ class BotClient(discord.AutoShardedClient):
         discord.opus.load_opus(find_library('opus'))
 
         print('Logged in as')
-        print(self.user.name)
         print(self.user.id)
-        print('------------')
-        await client.change_presence(activity=discord.Game(name='@{} info'.format(self.user.name)))
 
 
     async def on_guild_join(self, guild):
@@ -273,9 +268,7 @@ class BotClient(discord.AutoShardedClient):
             and user.join_sound is not None:
 
             if user.join_sound.public:
-
                 await self.play_sound(member.voice.channel, user.join_sound)
-                print('Playing join sound')
 
             else:
                 user.join_sound = None
@@ -307,7 +300,6 @@ class BotClient(discord.AutoShardedClient):
 
         except Exception as e:
             traceback.print_exc()
-            await message.channel.send('Internal exception detected in command, {}'.format(e))
 
 
     async def get_cmd(self, message):
@@ -376,8 +368,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def info(self, message, stripped, server):
         em = discord.Embed(title='INFO', color=self.color, description=
-        '''\u200B
-Default prefix: `?`
+        '''Default prefix: `?`
 
 Reset prefix: `@{user} prefix ?`
 Help: `{p}help`
@@ -397,8 +388,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
         )
 
         await message.channel.send(embed=em)
-
-        await message.add_reaction('📬')
 
 
     async def role(self, message, stripped, server):
@@ -737,7 +726,10 @@ There is a maximum sound limit per user. This can be removed by donating at http
         await self.wait_until_ready()
         while not client.is_closed():
 
-            [await vc.disconnect(force=True) for vc in self.voice_clients if not vc.is_playing()]
+            try:
+                [await vc.disconnect(force=True) for vc in self.voice_clients if not vc.is_playing()]
+            except:
+                pass
             await asyncio.sleep(180)
 
 
@@ -748,17 +740,9 @@ app.add_routes([web.get('/play', client.on_web_ping)])
 
 handler = app.make_handler()
 
-try:
-    client.loop.create_task(client.cleanup())
+client.loop.create_task(client.cleanup())
 
-    coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
-    client.loop.create_task(coro)
+coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
+client.loop.create_task(coro)
 
-    client.run(client.config.get('TOKENS', 'bot'))
-except Exception as e:
-    print('Error detected. Restarting in 15 seconds.')
-    print(sys.exc_info())
-    time.sleep(15)
-
-    os.execl(sys.executable, sys.executable, *sys.argv)
-
+client.run(client.config.get('TOKENS', 'bot'))
