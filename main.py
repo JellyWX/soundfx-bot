@@ -193,7 +193,7 @@ class BotClient(discord.AutoShardedClient):
 
             if p_server is None:
 
-                return False
+                return True
 
             else:
                 for m in p_server.members:
