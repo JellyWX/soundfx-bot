@@ -72,7 +72,6 @@ class BotClient(discord.AutoShardedClient):
 
         if self.config.get('TOKENS', 'discordbots'):
 
-            session = aiohttp.ClientSession()
             dump = json.dumps({
                 'server_count': len(client.guilds)
             })
@@ -83,7 +82,7 @@ class BotClient(discord.AutoShardedClient):
             }
 
             url = 'https://discordbots.org/api/bots/stats'
-            async with session.post(url, data=dump, headers=head) as resp:
+            async with self.csession.post(url, data=dump, headers=head) as resp:
                 print('returned {0.status} for {1}'.format(resp, dump))
 
             await session.close()
@@ -91,6 +90,8 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_ready(self):
         discord.opus.load_opus(find_library('opus'))
+
+        self.csession = aiohttp.ClientSession()
 
         print('Logged in as')
         print(self.user.id)
