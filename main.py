@@ -189,20 +189,11 @@ class BotClient(discord.AutoShardedClient):
 
         if not premium:
             roles: typing.List[int] = []
-            p_server = self.get_guild(self.config.get('DEFAULT', 'patreon_server'))
+            p_server = self.get_guild(int(self.config.get('DEFAULT', 'patreon_server')))
 
             if p_server is None:
 
-                url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.get('DEFAULT', 'patreon_server'), user)
-
-                head = {
-                    'authorization': self.config.get('TOKENS', 'bot'),
-                    'content-type' : 'application/json'
-                }
-
-                async with self.csession.get(url, headers=head) as resp:
-                    member = await resp.json()
-                    roles = [int(x) for x in member['roles']]
+                return False
 
             else:
                 for m in p_server.members:
