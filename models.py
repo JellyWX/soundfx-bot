@@ -47,8 +47,6 @@ class Sound(Base):
 
     public = Column( Boolean, nullable=False, default=True )
 
-    big = Column( Boolean, nullable=False, default=False )
-
 
 class User(Base):
     __tablename__ = 'users'

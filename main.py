@@ -562,9 +562,21 @@ There is a maximum sound limit per user. This can be removed by donating at http
             strings.append(string)
 
         if 'me' in stripped:
-            await message.channel.send('All your sounds: {}'.format(', '.join(strings)))
+            opener = 'All your sounds: '
         else:
-            await message.channel.send('All sounds on this server: {}'.format(', '.join(strings)))
+            opener = 'All sounds on this server: '
+
+        current_buffer = opener
+
+        for s in strings:
+            if len(current_buffer) + len(s) >= 2000:
+                await message.channel.send(current_buffer.strip(', '))
+                current_buffer = s
+            else:
+                current_buffer += '{}, '.format(s)
+
+        if len(current_buffer) > 0:
+            await message.channel.send(current_buffer.strip(', '))
 
 
     async def delete(self, message, stripped, server):
