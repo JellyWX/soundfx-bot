@@ -61,6 +61,8 @@ class BotClient(discord.AutoShardedClient):
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
 
+        self.fixed_patreons = [int(x.strip()) for x in self.config.get('DEFAULT', 'fixed_donors').split(',')]
+
 
     async def do_blocking(self, method):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
@@ -179,6 +181,9 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def check_premium(self, user):
+        if user in self.fixed_patreons:
+            return True
+
         premium = False
 
         async with aiohttp.ClientSession() as cs:
