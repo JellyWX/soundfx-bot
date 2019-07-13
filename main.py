@@ -73,7 +73,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
 
-        self.fixed_patreons = [int(x.strip()) for x in self.config.get('DEFAULT', 'fixed_donors').split(',')]
+        self.fixed_patreons = set([int(x.strip()) for x in self.config.get('DEFAULT', 'fixed_donors').split(',')])
 
 
     async def do_blocking(self, method):
@@ -126,9 +126,12 @@ class BotClient(discord.AutoShardedClient):
             guild = guild.guild
 
         for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
-                await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
-                break
+            if not channel.is_nsfw():
+                try:
+                    await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
+                    break
+                except:
+                    continue
             else:
                 continue
 
@@ -556,7 +559,13 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
     async def list(self, message, stripped, server):
 
-        strings = []
+        async def drain(queue):
+            while not queue.empty():
+                item = await queue.get()
+                yield item
+
+
+        strings = asyncio.Queue()
 
         if 'me' in stripped:
             user = session.query(User).filter(User.id == message.author.id).first()
@@ -571,7 +580,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             else:
                 string += ' (\U0001F510)'
 
-            strings.append(string)
+            await strings.put(string)
 
         if 'me' in stripped:
             opener = 'All your sounds: '
@@ -580,7 +589,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         current_buffer = opener
 
-        for s in strings:
+        async for s in drain(strings):
             if len(current_buffer) + len(s) >= 2000:
                 await message.channel.send(current_buffer.strip(', '))
                 current_buffer = s
