@@ -99,8 +99,6 @@ class BotClient(discord.AutoShardedClient):
             async with self.csession.post(url, data=dump, headers=head) as resp:
                 print('returned {0.status} for {1}'.format(resp, dump))
 
-            await session.close()
-
 
     async def on_ready(self):
         discord.opus.load_opus(find_library('opus'))
@@ -199,28 +197,19 @@ class BotClient(discord.AutoShardedClient):
         if user in self.fixed_patreons:
             return True
 
-        premium = False
+        roles: typing.List[int] = []
+        p_server = self.get_guild(int(self.config.get('DEFAULT', 'patreon_server')))
 
-        async with aiohttp.ClientSession() as cs:
-            async with cs.get('https://fusiondiscordbots.com/api/user/subscriptions/{}'.format(user)) as request:
-                t = await request.read()
-                if 'soundfx' in str(t):
-                    premium = True
+        if p_server is None:
 
-        if not premium:
-            roles: typing.List[int] = []
-            p_server = self.get_guild(int(self.config.get('DEFAULT', 'patreon_server')))
+            return True
 
-            if p_server is None:
+        else:
+            for m in p_server.members:
+                if m.id == user:
+                    roles.extend([r.id for r in m.roles])
 
-                return True
-
-            else:
-                for m in p_server.members:
-                    if m.id == user:
-                        roles.extend([r.id for r in m.roles])
-
-            premium = bool(set([int(self.config.get('DEFAULT', 'donor_role'))]) & set(roles))
+        premium = bool(set([int(self.config.get('DEFAULT', 'donor_role'))]) & set(roles))
 
         return premium
 
@@ -307,8 +296,9 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
-            if await self.get_cmd(message):
-                session.commit()
+            if message.channel.permissions_for(message.guild.me).send_messages():
+                if await self.get_cmd(message):
+                    session.commit()
 
         except Exception as e:
             traceback.print_exc()
@@ -564,7 +554,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 item = await queue.get()
                 yield item
 
-
         strings = asyncio.Queue()
 
         if 'me' in stripped:
@@ -645,9 +634,9 @@ There is a maximum sound limit per user. This can be removed by donating at http
         count = server.sounds.filter(Sound.public).count()
 
         if s is not None:
-
             s.public = not s.public
             await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
+
         else:
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
@@ -658,23 +647,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         length = 0
 
-        if 'new' in message.content.split(' ')[0]:
-            for sound in session.query(Sound).filter(Sound.public).order_by(Sound.id.desc()):
-                if length < 1900:
-                    g = self.get_guild(sound.server_id)
-
-                    if g is not None:
-                        name = g.name
-                    else:
-                        name = None
-
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
-
-                    embed.add_field(name=sound.name, value=content, inline=True)
-
-                    length += len(content) + len(sound.name)
-
-        elif 'popular' in message.content.split(' ')[0]:
+        if 'popular' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(Sound.plays.desc()):
                 if length < 1900:
                     content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
