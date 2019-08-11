@@ -62,7 +62,6 @@ class BotClient(discord.AutoShardedClient):
             'public' : self.public,
 
             'search' : self.search,
-            'new' : self.search,
             'popular' : self.search,
             'random' : self.search,
         }
@@ -176,7 +175,7 @@ class BotClient(discord.AutoShardedClient):
                 voice.stop()
 
             self.file_indexing += 1
-            self.file_indexing %= 1000
+            self.file_indexing %= 2000
 
             filename = '/tmp/file-{}'.format(self.file_indexing)
 
