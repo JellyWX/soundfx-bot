@@ -295,7 +295,7 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
-            if message.channel.permissions_for(message.guild.me).send_messages():
+            if message.channel.permissions_for(message.guild.me).send_messages:
                 if await self.get_cmd(message):
                     session.commit()
 
