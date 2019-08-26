@@ -134,15 +134,10 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def check_and_play(self, guild, channel, caller, sound, server):
-        if 'off' not in server.roles and not caller.guild_permissions.manage_guild:
-            for role in caller.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
+        if not self.check_permissions(server, caller):
+            await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
 
-        if caller.voice is None:
+        elif caller.voice is None:
             await channel.send('You aren\'t in a voice channel.')
 
         elif not caller.voice.channel.permissions_for(guild.me).connect:
@@ -214,19 +209,18 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def store(self, url):
-        m = await self.do_blocking( partial(self.b_store, url) )
+        def b_store(self, url):
+            sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'), stdout=subprocess.PIPE)
+
+            out = sub.stdout.read()
+            if len(out) < 1:
+                return b''
+
+            else:
+                return out
+
+        m = await self.do_blocking( partial(b_store, url) )
         return m
-
-
-    def b_store(self, url):
-        sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'), stdout=subprocess.PIPE)
-
-        out = sub.stdout.read()
-        if len(out) < 1:
-            return b''
-
-        else:
-            return out
 
 
     def delete_sound(self, s):
@@ -295,13 +289,21 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
-            if message.channel.permissions_for(message.guild.me).send_messages:
+            if message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(message.guild.me).embed_links:
                 if await self.get_cmd(message):
                     session.commit()
 
         except Exception as e:
             traceback.print_exc()
 
+
+    def check_permissions(server: Server, user: discord.User) -> bool:
+        if 'off' not in server.roles and not user.guild_permissions.manage_guild:
+            for role in user.roles:
+                if role.id in server.roles:
+                    return True
+            else:
+                return False
 
     async def get_cmd(self, message):
 
@@ -419,13 +421,9 @@ There is a maximum sound limit per user. This can be removed by donating at http
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
 
-        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
-            for role in message.author.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
+        if not self.check_permissions(server, message.author):
+            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+            return
 
         premium = await self.check_premium(message.author.id)
 
@@ -537,6 +535,27 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
 
+    async def volume(self, message, stripped, server):
+        if not self.check_permissions(server, message.author):
+            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+
+        else:
+            stripped = stripped.replace('%', '')
+            if check_digits(stripped):
+                new_vol: int = int(stripped)
+                if 0 < new_vol < 250:
+                    server.volume = new_vol
+
+                else:
+                    await message.channel.send('Sorry, but that volume is not valid. Volume must be greater than 0 and smaller than 250 (default: 100).')
+
+            elif stripped == '':
+                await message.channel.send('Current server volume: {vol}%. Change the volume with ```{prefix}volume <new volume>```'.format(vol=server.volume, prefix=server.prefix))
+
+            else:
+                await message.channel.send('Couldn\'t interpret new volume. Please use as ```{prefix}volume <new volume>```'.format(prefix=server.prefix))
+        
+
     async def stop(self, message, stripped, server):
 
         voice = [v for v in self.voice_clients if v.channel.guild == message.guild]
@@ -596,13 +615,9 @@ There is a maximum sound limit per user. This can be removed by donating at http
         u = session.query(Sound).filter(Sound.uploader_id == message.author.id).filter(Sound.name == stripped)
 
         if u.first() is None:
-            if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
-                for role in message.author.roles:
-                    if role.id in server.roles:
-                        break
-                else:
-                    await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                    return
+            if not self.check_permissions(server, message.author):
+                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+                return
 
             s = server.sounds.filter(Sound.name == stripped)
 
@@ -622,13 +637,9 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         s = server.sounds.filter(Sound.name == stripped).first()
 
-        if 'off' not in server.roles and not message.author.guild_permissions.manage_guild:
-            for role in message.author.roles:
-                if role.id in server.roles:
-                    break
-            else:
-                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
+        if not self.check_permissions(server, message.author):
+            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
+            return
 
         count = server.sounds.filter(Sound.public).count()
 

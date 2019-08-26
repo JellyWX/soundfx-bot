@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean, Text, LargeBinary
 from sqlalchemy import create_engine
-from sqlalchemy.dialects.mysql import LONGBLOB
+from sqlalchemy.dialects.mysql import LONGBLOB, TINYINT
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
 import configparser
@@ -27,6 +27,7 @@ class Server(Base):
     prefix = Column( String(5) )
     roles = Column( NestedMutableJson )
     sounds = relationship('Sound', backref='server', lazy='dynamic')
+    volume = Column(TINYINT(unsigned=True))
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
