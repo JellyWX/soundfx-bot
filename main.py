@@ -36,9 +36,10 @@ class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
-        self.color = 0xff3838
+        self.EMBED_COLOR = 0xff3838
 
         self.MAX_SOUNDS = 8
+        self.MAX_SOUND_STORE = 100
 
         self.file_indexing = 0
 
@@ -148,9 +149,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def play_sound(self, v_c, sound):
-        if sound.src is None:
-            sound.src = await self.store(sound.url)
-
         perms = v_c.permissions_for(v_c.guild.me)
 
         if perms.connect and perms.speak:
@@ -170,7 +168,7 @@ class BotClient(discord.AutoShardedClient):
                 voice.stop()
 
             self.file_indexing += 1
-            self.file_indexing %= 2000
+            self.file_indexing %= self.MAX_SOUND_STORE
 
             filename = '/tmp/file-{}'.format(self.file_indexing)
 
@@ -179,10 +177,7 @@ class BotClient(discord.AutoShardedClient):
 
             voice.play(discord.FFmpegPCMAudio(filename))
 
-            if sound.plays is None:
-                sound.plays = 1
-            else:
-                sound.plays += 1
+            sound.plays += 1
 
             session.commit()
 
@@ -305,6 +300,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 return False
 
+
     async def get_cmd(self, message):
 
         server = session.query(Server).filter_by(id=message.guild.id).first()
@@ -365,12 +361,12 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.color, description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
+        embed = discord.Embed(title='HELP', color=self.EMBED_COLOR, description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
 
     async def info(self, message, stripped, server):
-        em = discord.Embed(title='INFO', color=self.color, description=
+        em = discord.Embed(title='INFO', color=self.EMBED_COLOR, description=
         '''Default prefix: `?`
 
 Reset prefix: `@{user} prefix ?`
@@ -380,7 +376,7 @@ Invite me: https://discordapp.com/oauth2/authorize?client_id=430384808200372245&
 
 **Welcome to SFX!**
 Developer: <@203532103185465344>
-Find me on https://discord.gg/k4BwyZA and on https://github.com/JellyWX :)
+Find me on https://discord.jellywx.com/ and on https://github.com/JellyWX :)
 
 An online dashboard is available! Visit https://soundfx.jellywx.com/dashboard
 There is a maximum sound limit per user. This can be removed by donating at https://patreon.com/jellywx
@@ -439,37 +435,37 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distunguish it from IDs)')
 
         elif len(stripped) > 20:
-            await message.channel.send('Please keep your names concise. You used {}/20 characters.'.format(len(stripped)))
+            await message.channel.send('Please choose a shorter name. You used {}/20 characters.'.format(len(stripped)))
 
         else:
             sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
-            s = sound.first()
 
-            await message.channel.send('Saving as: `{}`. Send an audio file <500KB (1MB for premium users) or send any other message to cancel.'.format(stripped))
-
-            msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
-
-            if msg.attachments == []:
-                await message.channel.send('Please attach an MP3/OGG file following the `{}upload` command. Aborted.'.format(server.prefix))
+            if sound.first() is not None:
+                await message.channel.send('A sound in this server already exists under that name. Please either delete that sound first, or choose a different name.')
 
             else:
-                out = await self.store(msg.attachments[0].url)
+                await message.channel.send('Saving as: `{}`. Send an audio file or send any other message to cancel.'.format(stripped))
 
-                if len(out) < 1:
-                    await message.channel.send('File not recognized as being a valid audio file.')
+                msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
 
-                elif (len(out) > 350000 and not premium) or (len(out) > 1000000 and premium):
-                    await message.channel.send('Please only send audio files that are under 350kB serverside compressed (1MB if premium user). The bot uses Opus 28kbps compression when storing audio.')
+                if msg.attachments == []:
+                    await message.channel.send('Please attach an audio file following the `{}upload` command. Aborted.'.format(server.prefix))
 
                 else:
-                    if s is not None:
-                        self.delete_sound(sound)
+                    out = await self.store(msg.attachments[0].url)
 
-                    sound = Sound(url=msg.attachments[0].url, src=out, server=server, user=user, name=stripped, plays=0)
+                    if len(out) < 1:
+                        await message.channel.send('File not recognized as being a valid audio file.')
 
-                    session.add(sound)
+                    elif (len(out) > 350000 and not premium) or (len(out) > 1000000 and premium):
+                        await message.channel.send('Please only send audio files that are under 350kB serverside compressed (1MB if premium user). The bot uses Opus 28kbps compression when storing audio.')
 
-                    response = await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from Discord.**'.format(name=stripped, prefix=server.prefix))
+                    else:
+                        sound = Sound(src=out, server=server, user=user, name=stripped)
+
+                        session.add(sound)
+
+                        await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from Discord.**'.format(name=stripped, prefix=server.prefix))
 
 
     async def play(self, message, stripped, server):
@@ -543,7 +539,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             stripped = stripped.replace('%', '')
             if check_digits(stripped):
                 new_vol: int = int(stripped)
-                if 0 < new_vol < 250:
+                if 0 < new_vol <= 250:
                     server.volume = new_vol
 
                 else:
