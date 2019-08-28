@@ -242,7 +242,7 @@ class BotClient(discord.AutoShardedClient):
 
             volume: int = server.volume if server is not None else 100
 
-            await self.play_sound(m.voice.channel, s, volume)
+            await self.play_sound(member.voice.channel, s, volume)
 
             return web.Response(text='OK')
 
@@ -261,7 +261,7 @@ class BotClient(discord.AutoShardedClient):
             and user.join_sound is not None:
 
             if user.join_sound.public:
-                await self.play_sound(member.voice.channel, user.join_sound)
+                await self.play_sound(member.voice.channel, user.join_sound, server.volume)
 
             else:
                 user.join_sound = None
