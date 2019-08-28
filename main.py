@@ -11,6 +11,7 @@
 '''
 
 from models import Server, session, User, Sound
+from config import Config
 
 from ctypes.util import find_library
 import discord
@@ -37,9 +38,6 @@ class BotClient(discord.AutoShardedClient):
         super(BotClient, self).__init__(*args, **kwargs)
 
         self.EMBED_COLOR = 0xff3838
-
-        self.MAX_SOUNDS = 8
-        self.MAX_SOUND_STORE = 100
 
         self.file_indexing = 0
 
@@ -68,12 +66,9 @@ class BotClient(discord.AutoShardedClient):
         }
 
 
-        self.config = SafeConfigParser()
-        self.config.read('config.ini')
+        self.config = Config(filename='config.ini')
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
-
-        self.fixed_patreons = set([int(x.strip()) for x in self.config.get('DEFAULT', 'fixed_donors').split(',')])
 
 
     async def do_blocking(self, method):
@@ -84,14 +79,14 @@ class BotClient(discord.AutoShardedClient):
     async def send(self):
         guild_count = len(self.guilds)
 
-        if self.config.get('TOKENS', 'discordbots'):
+        if self.config.dbl_token is not None:
 
             dump = json.dumps({
                 'server_count': len(client.guilds)
             })
 
             head = {
-                'authorization': self.config.get('TOKENS', 'discordbots'),
+                'authorization': self.config.dbl_token,
                 'content-type' : 'application/json'
             }
 
@@ -168,7 +163,7 @@ class BotClient(discord.AutoShardedClient):
                 voice.stop()
 
             self.file_indexing += 1
-            self.file_indexing %= self.MAX_SOUND_STORE
+            self.file_indexing %= self.config.max_sound_store
 
             filename = '/tmp/file-{}'.format(self.file_indexing)
 
@@ -183,11 +178,11 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def check_premium(self, user):
-        if user in self.fixed_patreons:
+        if user in self.config.fixed_donors:
             return True
 
         roles: typing.List[int] = []
-        p_server = self.get_guild(int(self.config.get('DEFAULT', 'patreon_server')))
+        p_server = self.get_guild(int(self.config.patreon_server))
 
         if p_server is None:
 
@@ -198,7 +193,7 @@ class BotClient(discord.AutoShardedClient):
                 if m.id == user:
                     roles.extend([r.id for r in m.roles])
 
-        premium = bool(set([int(self.config.get('DEFAULT', 'donor_role'))]) & set(roles))
+        premium = bool(set([int(self.config.donor_role)]) & set(roles))
 
         return premium
 
@@ -425,7 +420,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        if len(user.sounds) >= self.MAX_SOUNDS and not premium:
+        if len(user.sounds) >= self.config.max_sounds and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
@@ -754,4 +749,4 @@ client.loop.create_task(client.cleanup())
 coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
 client.loop.create_task(coro)
 
-client.run(client.config.get('TOKENS', 'bot'))
+client.run(client.config.bot_token)

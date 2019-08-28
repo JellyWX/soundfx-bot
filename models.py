@@ -4,18 +4,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, TINYINT
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
-import configparser
 
-config = configparser.SafeConfigParser()
-config.read('config.ini')
-user = config.get('MYSQL', 'USER')
-try:
-    passwd = config.get('MYSQL', 'PASSWD')
-except:
-    passwd = None
-host = config.get('MYSQL', 'HOST')
-database = config.get('MYSQL', 'DATABASE')
+from tinyconf.deserializers import IniDeserializer
+from tinyconf.fields import Field
 
+class MysqlConfig(IniDeserializer):
+    user = Field(strict=True)
+    passwd = Field(strict=False)
+    host = Field(strict=False, default='localhost')
+    database = Field(strict=False, default='soundfx')
+
+config = MysqlConfig(filename='config.ini', section='MYSQL')
 Base = declarative_base()
 
 
@@ -63,10 +62,10 @@ class User(Base):
         return '<User {}>'.format(self.id)
 
 
-if passwd:
-    engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
+if config.passwd is not None:
+    engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=config.user, passwd=config.passwd, host=config.host, db=config.database))
 else:
-    engine = create_engine('mysql+pymysql://{user}@{host}/{db}?charset=utf8mb4'.format(user=user, host=host, db=database))
+    engine = create_engine('mysql+pymysql://{user}@{host}/{db}?charset=utf8mb4'.format(user=config.user, host=config.host, db=config.database))
 Base.metadata.create_all(bind=engine)
 
 Session = sessionmaker(bind=engine)
