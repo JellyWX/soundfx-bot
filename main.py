@@ -228,17 +228,21 @@ class BotClient(discord.AutoShardedClient):
         params = request.rel_url.query
 
         if all(x in params.keys() for x in ('id', 'user')):
-            m = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None]
+            members = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None]
 
-            if len(m) == 0:
+            if len(members) == 0:
                 return web.Response(text='Not in voice channel', status=400)
 
             else:
-                m = m[0]
+                member = members[0]
 
             s = session.query(Sound).get(params['id'])
 
-            await self.play_sound(m.voice.channel, s)
+            server = session.query(Server).filter(Server.id == member.guild.id).first()
+
+            volume: int = server.volume if server is not None else 100
+
+            await self.play_sound(m.voice.channel, s, volume)
 
             return web.Response(text='OK')
 
