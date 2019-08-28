@@ -26,7 +26,7 @@ class Server(Base):
     prefix = Column( String(5) )
     roles = Column( NestedMutableJson )
     sounds = relationship('Sound', backref='server', lazy='dynamic')
-    volume = Column(TINYINT(unsigned=True))
+    volume = Column(TINYINT(unsigned=True), nullable=False, default=100)
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)

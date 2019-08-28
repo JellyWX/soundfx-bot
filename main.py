@@ -63,6 +63,8 @@ class BotClient(discord.AutoShardedClient):
             'search' : self.search,
             'popular' : self.search,
             'random' : self.search,
+
+            'volume' : self.volume,
         }
 
 
@@ -140,10 +142,10 @@ class BotClient(discord.AutoShardedClient):
             await channel.send('No permissions to connect to channel.')
 
         else:
-            await self.play_sound(caller.voice.channel, sound)
+            await self.play_sound(caller.voice.channel, sound, server.volume)
 
 
-    async def play_sound(self, v_c, sound):
+    async def play_sound(self, v_c, sound, volume):
         perms = v_c.permissions_for(v_c.guild.me)
 
         if perms.connect and perms.speak:
@@ -170,7 +172,10 @@ class BotClient(discord.AutoShardedClient):
             with open(filename, 'wb') as f:
                 f.write(src)
 
-            voice.play(discord.FFmpegPCMAudio(filename))
+            if volume == 100:
+                voice.play(discord.FFmpegPCMAudio(filename))
+            else:
+                voice.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(filename), volume / 100))
 
             sound.plays += 1
 
@@ -199,7 +204,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def store(self, url):
-        def b_store(self, url):
+        def b_store(url):
             sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'), stdout=subprocess.PIPE)
 
             out = sub.stdout.read()
@@ -287,13 +292,16 @@ class BotClient(discord.AutoShardedClient):
             traceback.print_exc()
 
 
-    def check_permissions(server: Server, user: discord.User) -> bool:
+    def check_permissions(self, server: Server, user: discord.User) -> bool:
         if 'off' not in server.roles and not user.guild_permissions.manage_guild:
             for role in user.roles:
                 if role.id in server.roles:
                     return True
             else:
                 return False
+
+        else:
+            return True
 
 
     async def get_cmd(self, message):
@@ -536,6 +544,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 new_vol: int = int(stripped)
                 if 0 < new_vol <= 250:
                     server.volume = new_vol
+                    await message.channel.send('Volume changed')
 
                 else:
                     await message.channel.send('Sorry, but that volume is not valid. Volume must be greater than 0 and smaller than 250 (default: 100).')
