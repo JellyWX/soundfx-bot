@@ -18,7 +18,7 @@ config = MysqlConfig(filename='config.ini', section='MYSQL')
 Base = declarative_base()
 
 
-class Server(Base):
+class GuildData(Base):
     __tablename__ = 'servers'
 
     map_id = Column(Integer, primary_key=True)

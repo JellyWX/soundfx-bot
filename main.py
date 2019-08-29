@@ -10,13 +10,16 @@
 190654952362737664
 '''
 
-from models import Server, session, User, Sound
+from models import GuildData, session, User, Sound
 from config import Config
 
 from ctypes.util import find_library
 import discord
 import sys
 import os
+import types
+import typing
+from enum import Enum
 import aiohttp
 from aiohttp import web
 import asyncio
@@ -33,38 +36,80 @@ from sqlalchemy.sql.expression import func
 
 check_digits = lambda x: all( [y in '0123456789' for y in x] ) and len(x)
 
+class PermissionLevels(Enum):
+    UNRESTRICTED = 0
+    MANAGED = 1
+    RESTRICTED = 2
+
+class Command():
+    def __init__(self, func: types.FunctionType, permission_level: PermissionLevels):
+        self.func = func
+        self.permission_level = permission_level
+
+    async def call(self, caller: discord.Member, guild_data: GuildData, *args) -> typing.Optional[str]:
+        if self.permission_level == PermissionLevels.UNRESTRICTED:
+            await self._call_func(*args)
+
+        elif self.permission_level == PermissionLevels.MANAGED:
+            if self._check_managed_perms(caller, guild_data):
+                await self._call_func(*args)
+            else:
+                return "You must have an appropriate role to run this command. Tell an admin to do `?roles`"
+
+        elif self.permission_level == PermissionLevels.RESTRICTED:
+            if caller.guild_permissions.manage_guild:
+                await self._call_func(*args)
+            else:
+                return "You must be a guild manager to run this command"
+
+    async def _call_func(self, *args):
+        await self.func(*args)
+
+    def _check_managed_perms(self, member: discord.Member, guild_data: GuildData) -> bool:
+        if 'off' not in guild_data.roles and not caller.guild_permissions.manage_guild:
+            for role in caller.roles:
+                if role.id in guild_data.roles:
+                    return True
+            else:
+                return False
+
+        else:
+            return True
+
+
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
-        self.EMBED_COLOR = 0xff3838
+        self.EMBED_COLOR = 0xFF3838
 
         self.file_indexing = 0
 
         self.commands = {
-            'ping' : self.ping,
-            'help' : self.help,
-            'info' : self.info,
-            'invite' : self.info,
+            'ping' : Command(self.ping, PermissionLevels.UNRESTRICTED),
+            'help' : Command(self.help, PermissionLevels.UNRESTRICTED),
+            'info' : Command(self.info, PermissionLevels.UNRESTRICTED),
+            'invite' : Command(self.info, PermissionLevels.UNRESTRICTED),
 
-            'prefix' : self.change_prefix,
-            'upload' : self.wait_for_file,
+            'upload' : Command(self.wait_for_file, PermissionLevels.MANAGED),
+            'delete' : Command(self.delete, PermissionLevels.MANAGED),
 
-            'play' : self.play,
-            'stop' : self.stop,
+            'play' : Command(self.play, PermissionLevels.MANAGED),
+            'p' : Command(self.play, PermissionLevels.MANAGED),
+            'stop' : Command(self.stop, PermissionLevels.MANAGED),
+            'volume' : Command(self.volume, PermissionLevels.MANAGED),
 
-            'list' : self.list,
-            'delete' : self.delete,
-            'roles' : self.role,
+            'prefix' : Command(self.change_prefix, PermissionLevels.RESTRICTED),
+            'roles' : Command(self.role, PermissionLevels.RESTRICTED),
 
-            'greet' : self.greet,
-            'public' : self.public,
+            'greet' : Command(self.greet, PermissionLevels.MANAGED),
 
-            'search' : self.search,
-            'popular' : self.search,
-            'random' : self.search,
+            'public' : Command(self.public, PermissionLevels.MANAGED),
 
-            'volume' : self.volume,
+            'list' : Command(self.list, PermissionLevels.UNRESTRICTED),
+            'search' : Command(self.search, PermissionLevels.UNRESTRICTED),
+            'popular' : Command(self.search, PermissionLevels.UNRESTRICTED),
+            'random' : Command(self.search, PermissionLevels.UNRESTRICTED),
         }
 
 
@@ -121,28 +166,20 @@ class BotClient(discord.AutoShardedClient):
             guild = guild.guild
 
         for channel in guild.text_channels:
-            if not channel.is_nsfw():
-                try:
-                    await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
-                    break
-                except:
-                    continue
-            else:
-                continue
+            if not channel.is_nsfw() and channel.permissions_for(guild.me).send_messages:
+                await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
+                break
 
 
-    async def check_and_play(self, guild, channel, caller, sound, server):
-        if not self.check_permissions(server, caller):
-            await channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-
-        elif caller.voice is None:
+    async def check_and_play(self, guild, channel, caller, sound, guild_data):
+        if caller.voice is None:
             await channel.send('You aren\'t in a voice channel.')
 
         elif not caller.voice.channel.permissions_for(guild.me).connect:
             await channel.send('No permissions to connect to channel.')
 
         else:
-            await self.play_sound(caller.voice.channel, sound, server.volume)
+            await self.play_sound(caller.voice.channel, sound, guild_data.volume)
 
 
     async def play_sound(self, v_c, sound, volume):
@@ -238,7 +275,7 @@ class BotClient(discord.AutoShardedClient):
 
             s = session.query(Sound).get(params['id'])
 
-            server = session.query(Server).filter(Server.id == member.guild.id).first()
+            server = session.query(GuildData).filter(GuildData.id == member.guild.id).first()
 
             volume: int = server.volume if server is not None else 100
 
@@ -255,13 +292,13 @@ class BotClient(discord.AutoShardedClient):
         if user is None:
             return
 
-        server = session.query(Server).filter_by(id=member.guild.id).first()
+        guild_data = session.query(GuildData).filter_by(id=member.guild.id).first()
 
         if before.channel != after.channel and after.channel is not None \
             and user.join_sound is not None:
 
             if user.join_sound.public:
-                await self.play_sound(member.voice.channel, user.join_sound, server.volume)
+                await self.play_sound(member.voice.channel, user.join_sound, guild_data.volume)
 
             else:
                 user.join_sound = None
@@ -277,8 +314,8 @@ class BotClient(discord.AutoShardedClient):
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
             return
 
-        if session.query(Server).filter_by(id=message.guild.id).first() is None:
-            s = Server(id=message.guild.id, prefix='?', roles=['off'])
+        if session.query(GuildData).filter_by(id=message.guild.id).first() is None:
+            s = GuildData(id=message.guild.id, prefix='?', roles=['off'])
             session.add(s)
             session.commit()
 
@@ -296,24 +333,10 @@ class BotClient(discord.AutoShardedClient):
             traceback.print_exc()
 
 
-    def check_permissions(self, server: Server, user: discord.User) -> bool:
-        if 'off' not in server.roles and not user.guild_permissions.manage_guild:
-            for role in user.roles:
-                if role.id in server.roles:
-                    return True
-            else:
-                return False
-
-        else:
-            return True
-
-
     async def get_cmd(self, message):
 
-        server = session.query(Server).filter_by(id=message.guild.id).first()
-        prefix = server.prefix
-
-        command = None
+        guild_data: GuildData = session.query(GuildData).filter_by(id=message.guild.id).first()
+        prefix: str = guild_data.prefix
 
         if message.content[0:len(prefix)] == prefix:
             command = (message.content + ' ')[len(prefix):message.content.find(' ')]
@@ -323,40 +346,26 @@ class BotClient(discord.AutoShardedClient):
             command = message.content.split(' ')[1]
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
-        if command is not None:
-            if command in self.commands.keys():
-                await self.commands[command](message, stripped, server)
-                return True
+        if command in self.commands.keys():
+            response: typing.Optional[str] = await self.commands[command].call(message.author, guild_data, message, stripped, guild_data)
+            if response is not None:
+                await message.channel.send(response)
+
+
+    async def change_prefix(self, message, stripped, guild_data):
+        if stripped:
+            stripped += ' '
+            new = stripped[:stripped.find(' ')]
+
+            if len(new) > 5:
+                await message.channel.send('Prefix must be shorter than 5 characters')
 
             else:
-                s = server.sounds.filter(Sound.name == '{} {}'.format(command, stripped).strip()).first()
-
-                if s is not None:
-                    await self.play(message, '{} {}'.format(command, stripped).strip(), server)
-
-        return False
-
-
-    async def change_prefix(self, message, stripped, server):
-
-        if message.author.guild_permissions.manage_guild:
-
-            if stripped:
-                stripped += ' '
-                new = stripped[:stripped.find(' ')]
-
-                if len(new) > 5:
-                    await message.channel.send('Prefix must be shorter than 5 characters')
-
-                else:
-                    server.prefix = new
-                    await message.channel.send('Prefix changed to {}'.format(server.prefix))
-
-            else:
-                await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(server.prefix))
+                guild_data.prefix = new
+                await message.channel.send('Prefix changed to {}'.format(guild_data.prefix))
 
         else:
-            await message.channel.send('Please ensure you have the `manage guild` permission to run this command.')
+            await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(guild_data.prefix))
 
 
     async def ping(self, message, stripped, server):
@@ -397,36 +406,27 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
 
     async def role(self, message, stripped, server):
-        if message.author.guild_permissions.manage_guild:
+        if stripped == '@everyone':
+            server.roles = ['off']
 
-            if stripped == '@everyone':
-                server.roles = ['off']
+            await message.channel.send('Role blacklisting disabled.')
 
-                await message.channel.send('Role blacklisting disabled.')
+        elif len(message.role_mentions) > 0:
+            roles = [x.id for x in message.role_mentions]
 
-            elif len(message.role_mentions) > 0:
-                roles = [x.id for x in message.role_mentions]
+            server.roles = roles
 
-                server.roles = roles
-
-                await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
-
-            else:
-                if server.roles[0] == 'off':
-                    await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
-                else:
-                    await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format('>, <@&'.join([str(x) for x in server.roles])))
+            await message.channel.send('Roles set. Please note members with `Manage GuildData` permissions will be able to do sounds regardless of roles.')
 
         else:
-            await message.channel.send('You must have permission `Manage Server` to perform this command.')
+            if server.roles[0] == 'off':
+                await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
+            else:
+                await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format('>, <@&'.join([str(x) for x in server.roles])))
 
 
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
-
-        if not self.check_permissions(server, message.author):
-            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-            return
 
         premium = await self.check_premium(message.author.id)
 
@@ -539,25 +539,21 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
 
     async def volume(self, message, stripped, server):
-        if not self.check_permissions(server, message.author):
-            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-
-        else:
-            stripped = stripped.replace('%', '')
-            if check_digits(stripped):
-                new_vol: int = int(stripped)
-                if 0 < new_vol <= 250:
-                    server.volume = new_vol
-                    await message.channel.send('Volume changed')
-
-                else:
-                    await message.channel.send('Sorry, but that volume is not valid. Volume must be greater than 0 and smaller than 250 (default: 100).')
-
-            elif stripped == '':
-                await message.channel.send('Current server volume: {vol}%. Change the volume with ```{prefix}volume <new volume>```'.format(vol=server.volume, prefix=server.prefix))
+        stripped = stripped.replace('%', '')
+        if check_digits(stripped):
+            new_vol: int = int(stripped)
+            if 0 < new_vol <= 250:
+                server.volume = new_vol
+                await message.channel.send('Volume changed')
 
             else:
-                await message.channel.send('Couldn\'t interpret new volume. Please use as ```{prefix}volume <new volume>```'.format(prefix=server.prefix))
+                await message.channel.send('Sorry, but that volume is not valid. Volume must be greater than 0 and smaller than 250 (default: 100).')
+
+        elif stripped == '':
+            await message.channel.send('Current server volume: {vol}%. Change the volume with ```{prefix}volume <new volume>```'.format(vol=server.volume, prefix=server.prefix))
+
+        else:
+            await message.channel.send('Couldn\'t interpret new volume. Please use as ```{prefix}volume <new volume>```'.format(prefix=server.prefix))
         
 
     async def stop(self, message, stripped, server):
@@ -619,10 +615,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
         u = session.query(Sound).filter(Sound.uploader_id == message.author.id).filter(Sound.name == stripped)
 
         if u.first() is None:
-            if not self.check_permissions(server, message.author):
-                await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-                return
-
             s = server.sounds.filter(Sound.name == stripped)
 
             if s.first() is not None:
@@ -640,10 +632,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
         stripped = stripped.lower()
 
         s = server.sounds.filter(Sound.name == stripped).first()
-
-        if not self.check_permissions(server, message.author):
-            await message.channel.send('You aren\'t allowed to do this. Please tell a moderator to do `{}roles` to set up permissions'.format(server.prefix))
-            return
 
         count = server.sounds.filter(Sound.public).count()
 
@@ -712,7 +700,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
     async def greet(self, message, stripped, server):
         user = session.query(User).filter(User.id == message.author.id).first()
         stripped = stripped.lower()
-
 
         if stripped == '' and user.join_sound is not None:
             user.join_sound = None
