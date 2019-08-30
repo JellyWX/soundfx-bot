@@ -11,7 +11,7 @@
 '''
 
 from models import GuildData, session, User, Sound
-from config import Config
+from config import config
 
 from ctypes.util import find_library
 import discord
@@ -113,8 +113,6 @@ class BotClient(discord.AutoShardedClient):
         }
 
 
-        self.config = Config(filename='config.ini')
-
         self.executor = concurrent.futures.ThreadPoolExecutor()
 
 
@@ -126,14 +124,14 @@ class BotClient(discord.AutoShardedClient):
     async def send(self):
         guild_count = len(self.guilds)
 
-        if self.config.dbl_token is not None:
+        if config.dbl_token is not None:
 
             dump = json.dumps({
                 'server_count': len(client.guilds)
             })
 
             head = {
-                'authorization': self.config.dbl_token,
+                'authorization': config.dbl_token,
                 'content-type' : 'application/json'
             }
 
@@ -202,7 +200,7 @@ class BotClient(discord.AutoShardedClient):
                 voice.stop()
 
             self.file_indexing += 1
-            self.file_indexing %= self.config.max_sound_store
+            self.file_indexing %= config.max_sound_store
 
             filename = '/tmp/file-{}'.format(self.file_indexing)
 
@@ -220,11 +218,11 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def check_premium(self, user):
-        if user in self.config.fixed_donors:
+        if user in config.fixed_donors:
             return True
 
         roles: typing.List[int] = []
-        p_server = self.get_guild(int(self.config.patreon_server))
+        p_server = self.get_guild(int(config.patreon_server))
 
         if p_server is None:
 
@@ -235,7 +233,7 @@ class BotClient(discord.AutoShardedClient):
                 if m.id == user:
                     roles.extend([r.id for r in m.roles])
 
-        premium = bool(set([int(self.config.donor_role)]) & set(roles))
+        premium = bool(set([int(config.donor_role)]) & set(roles))
 
         return premium
 
@@ -338,6 +336,8 @@ class BotClient(discord.AutoShardedClient):
         guild_data: GuildData = session.query(GuildData).filter_by(id=message.guild.id).first()
         prefix: str = guild_data.prefix
 
+        command: typing.Optional[str] = None
+
         if message.content[0:len(prefix)] == prefix:
             command = (message.content + ' ')[len(prefix):message.content.find(' ')]
             stripped = (message.content + ' ')[message.content.find(' '):].strip()
@@ -416,7 +416,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
             server.roles = roles
 
-            await message.channel.send('Roles set. Please note members with `Manage GuildData` permissions will be able to do sounds regardless of roles.')
+            await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
 
         else:
             if server.roles[0] == 'off':
@@ -432,7 +432,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        if len(user.sounds) >= self.config.max_sounds and not premium:
+        if len(user.sounds) >= config.max_sounds and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(self.MAX_SOUNDS, prefix=server.prefix))
 
         elif stripped == '':
@@ -749,4 +749,4 @@ client.loop.create_task(client.cleanup())
 coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
 client.loop.create_task(coro)
 
-client.run(client.config.bot_token)
+client.run(config.bot_token)

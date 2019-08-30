@@ -5,18 +5,9 @@ from sqlalchemy.dialects.mysql import MEDIUMBLOB, TINYINT
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy_json import NestedMutableJson, MutableJson
 
-from tinyconf.deserializers import IniDeserializer
-from tinyconf.fields import Field
+from config import config
 
-class MysqlConfig(IniDeserializer):
-    user = Field(strict=True)
-    passwd = Field(strict=False)
-    host = Field(strict=False, default='localhost')
-    database = Field(strict=False, default='soundfx')
-
-config = MysqlConfig(filename='config.ini', section='MYSQL')
 Base = declarative_base()
-
 
 class GuildData(Base):
     __tablename__ = 'servers'
