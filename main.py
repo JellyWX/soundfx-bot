@@ -77,6 +77,11 @@ class Command():
             return True
 
 
+class SoundSearch():
+    def __init__(self, sound, ):
+        pass
+
+
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
@@ -114,6 +119,24 @@ class BotClient(discord.AutoShardedClient):
 
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
+
+    @staticmethod
+    def get_sound_by_string(string: str, server_id: int, uploader_id: int) -> typing.Optional[Sound]:
+        string = string.lower()
+
+        if check_digits(string):
+            return session.query(Sound).get(int(string))
+
+        elif string.startswith('id:') and check_digits(string[3:]):
+            return session.query(Sound).get(int(string[3:]))
+
+        else:
+            return session.query(Sound).filter(Sound.name == string)
+                .order_by(Sound.server_id == server_id)
+                .order_by(Sound.uploader_id == uploader_id)
+                .order_by(func.rand())
+                .limit(1)
+                .first()
 
 
     async def do_blocking(self, method):
@@ -222,7 +245,7 @@ class BotClient(discord.AutoShardedClient):
             return True
 
         roles: typing.List[int] = []
-        p_server = self.get_guild(int(config.patreon_server))
+        p_server = self.get_guild(config.patreon_server)
 
         if p_server is None:
 
@@ -233,7 +256,7 @@ class BotClient(discord.AutoShardedClient):
                 if m.id == user:
                     roles.extend([r.id for r in m.roles])
 
-        premium = bool(set([int(config.donor_role)]) & set(roles))
+        premium = bool(set([config.donor_role]) & set(roles))
 
         return premium
 
@@ -254,8 +277,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     def delete_sound(self, s):
-        u = session.query(User).filter(User.join_sound_id == s.first().id)
-
         s.delete(synchronize_session='fetch')
 
 
