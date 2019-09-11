@@ -131,12 +131,19 @@ class BotClient(discord.AutoShardedClient):
             return session.query(Sound).get(int(string[3:]))
 
         else:
-            return session.query(Sound).filter(Sound.name == string)
-                .order_by(Sound.server_id == server_id)
-                .order_by(Sound.uploader_id == uploader_id)
-                .order_by(func.rand())
-                .limit(1)
+            q = session.query(Sound).filter(Sound.name == string) \
+                .order_by(
+                    Sound.server_id != server_id,
+                    Sound.uploader_id != uploader_id,
+                    Sound.public == False,
+                    func.rand()) \
                 .first()
+
+            if q.server_id != server_id and q.uploader_id != uploader_id and not q.public:
+                return None
+
+            else:
+                return q
 
 
     async def do_blocking(self, method):
@@ -502,38 +509,10 @@ There is a maximum sound limit per user. This can be removed by donating at http
         if stripped == '':
             await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
-        elif stripped.startswith('id:') and check_digits(stripped[3:]):
-            id = int( stripped[3:] )
-            s = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
-
-            if s is None:
-                await message.channel.send('No sound found by ID')
-                return
-
         else:
-            s = session.query(Sound).filter_by(server_id=message.guild.id, name=stripped).first()
+            s: typing.Optional[Sound] = self.get_sound_by_string(stripped, message.guild.id, message.author.id)
 
             if s is None:
-                s = session.query(Sound).filter_by(uploader_id=message.author.id, name=stripped).first()
-
-        if s is None: ## if none in current server by name:
-            sq = session.query(Sound).filter( Sound.public ).filter( Sound.name == stripped ).order_by( func.rand() ) ## query by name
-            s = sq.first()
-
-            if sq.count() > 1:
-
-                g = self.get_guild(s.server_id)
-
-                if g is not None:
-                    name = g.name
-                else:
-                    name = None
-
-                await message.channel.send('Mutiple sounds with name specified. Consider using `{}play ID:1234` to specify an ID. Playing {} (ID {}) from {}...'.format( server.prefix, s.name, s.id, name ))
-
-                await self.check_and_play(message.guild, message.channel, message.author, s, server)
-
-            elif sq.count() == 0:
 
                 await message.channel.send('Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
 
@@ -545,7 +524,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 else:
                     name = None
 
-                await message.channel.send('Playing public sound {name} (ID {id}) from {guild}'.format(
+                await message.channel.send('Playing sound **{name}** (ID `{id}`) from **{guild}**'.format(
                     name = s.name,
                     id = s.id,
                     guild = name,
@@ -554,9 +533,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 )
 
                 await self.check_and_play(message.guild, message.channel, message.author, s, server)
-
-        else:
-            await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
 
     async def volume(self, message, stripped, server):
@@ -631,30 +607,34 @@ There is a maximum sound limit per user. This can be removed by donating at http
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
-        user = session.query(User).filter(User.id == message.author.id).first()
+        q = session.query(Sound) \
+            .filter(Sound.name == stripped) \
+            .filter(
+                (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
+            ) \
+            .order_by(Sound.uploader_id != message.author.id) \
+            .first()
 
-        u = session.query(Sound).filter(Sound.uploader_id == message.author.id).filter(Sound.name == stripped)
-
-        if u.first() is None:
-            s = server.sounds.filter(Sound.name == stripped)
-
-            if s.first() is not None:
-                self.delete_sound(s)
-                await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
-            else:
-                await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+        if q is None:
+            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
         else:
-            self.delete_sound(u)
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), self.MAX_SOUNDS))
+            user = session.query(User).filter(User.id == message.author.id).first()
+    
+            self.delete_sound(session.query(Sound).filter(Sound.id == q.id))
+            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), config.max_sounds))
 
 
     async def public(self, message, stripped, server):
         stripped = stripped.lower()
 
-        s = server.sounds.filter(Sound.name == stripped).first()
-
-        count = server.sounds.filter(Sound.public).count()
+        s = session.query(Sound) \
+            .filter(Sound.name == stripped) \
+            .filter(
+                (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
+            ) \
+            .order_by(Sound.uploader_id != message.author.id) \
+            .first()
 
         if s is not None:
             s.public = not s.public
@@ -726,25 +706,20 @@ There is a maximum sound limit per user. This can be removed by donating at http
             user.join_sound = None
             await message.channel.send('You have unassigned your greet sound')
 
-        elif check_digits(stripped):
-            id = int( stripped )
-
-            sound = session.query(Sound).filter(Sound.public).filter(Sound.id == id).first()
-
+        else:
             if user is None:
                 user = User(id=message.author.id, join_sound=None)
                 session.add(user)
                 session.commit()
+
+            sound = self.get_sound_by_string(stripped)
 
             if sound is not None:
                 user.join_sound = sound
                 await message.channel.send('Your greet sound has been set.')
 
             else:
-                await message.channel.send('No public sound found with ID {}'.format(id))
-
-        else:
-            await message.channel.send('Please specify a numerical ID. You can find IDs using the search command.')
+                await message.channel.send('No public sound found.')
 
 
     async def cleanup(self):

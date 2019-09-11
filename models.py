@@ -14,7 +14,7 @@ class GuildData(Base):
 
     map_id = Column(Integer, primary_key=True)
     id = Column(BigInteger, unique=True)
-    prefix = Column( String(5) )
+    prefix = Column( String(5), nullable=False, default='?' )
     roles = Column( NestedMutableJson )
     sounds = relationship('Sound', backref='server', lazy='dynamic')
     volume = Column(TINYINT(unsigned=True), nullable=False, default=100)
