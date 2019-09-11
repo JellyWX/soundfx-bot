@@ -352,8 +352,8 @@ class BotClient(discord.AutoShardedClient):
 
         try:
             if message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(message.guild.me).embed_links:
-                if await self.get_cmd(message):
-                    session.commit()
+                await self.get_cmd(message)
+                session.commit()
 
         except Exception as e:
             traceback.print_exc()
