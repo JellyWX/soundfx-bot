@@ -712,7 +712,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 session.add(user)
                 session.commit()
 
-            sound = self.get_sound_by_string(stripped)
+            sound = self.get_sound_by_string(stripped, message.guild.id, message.author.id)
 
             if sound is not None:
                 user.join_sound = sound
