@@ -77,11 +77,6 @@ class Command():
             return True
 
 
-class SoundSearch():
-    def __init__(self, sound, ):
-        pass
-
-
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
@@ -139,7 +134,7 @@ class BotClient(discord.AutoShardedClient):
                     func.rand()) \
                 .first()
 
-            if q.server_id != server_id and q.uploader_id != uploader_id and not q.public:
+            if q is None or (q.server_id != server_id and q.uploader_id != uploader_id and not q.public):
                 return None
 
             else:
@@ -467,7 +462,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
         elif check_digits(stripped):
-            await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distunguish it from IDs)')
+            await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distinguish it from IDs)')
 
         elif len(stripped) > 20:
             await message.channel.send('Please choose a shorter name. You used {}/20 characters.'.format(len(stripped)))
@@ -492,8 +487,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     if len(out) < 1:
                         await message.channel.send('File not recognized as being a valid audio file.')
 
-                    elif (len(out) > 350000 and not premium) or (len(out) > 1000000 and premium):
-                        await message.channel.send('Please only send audio files that are under 350kB serverside compressed (1MB if premium user). The bot uses Opus 28kbps compression when storing audio.')
+                    elif len(out) > 1000000 and premium:
+                        await message.channel.send('Please only send audio files that are under 1MB serverside compressed. The bot uses Opus 28kbps compression when storing audio.')
 
                     else:
                         sound = Sound(src=out, server=server, user=user, name=stripped)
