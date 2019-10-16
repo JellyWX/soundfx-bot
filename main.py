@@ -66,8 +66,8 @@ class Command():
         await self.func(*args)
 
     def _check_managed_perms(self, member: discord.Member, guild_data: GuildData) -> bool:
-        if 'off' not in guild_data.roles and not caller.guild_permissions.manage_guild:
-            for role in caller.roles:
+        if 'off' not in guild_data.roles and not member.guild_permissions.manage_guild:
+            for role in member.roles:
                 if role.id in guild_data.roles:
                     return True
             else:
