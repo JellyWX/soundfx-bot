@@ -174,6 +174,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_ready(self):
+        print('Entering on_ready...')
         discord.opus.load_opus(find_library('opus'))
 
         self.csession = aiohttp.ClientSession()
@@ -331,11 +332,6 @@ class BotClient(discord.AutoShardedClient):
                 user.join_sound = None
 
 
-    async def on_error(self, e, *a, **k):
-        session.rollback()
-        raise
-
-
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
@@ -376,6 +372,7 @@ class BotClient(discord.AutoShardedClient):
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
         if command in self.commands.keys():
+            print(message.content)
             response: typing.Optional[str] = await self.commands[command].call(message.author, guild_data, message, stripped, guild_data)
             if response is not None:
                 await message.channel.send(response)
