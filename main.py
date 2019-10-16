@@ -30,18 +30,9 @@ import sqlalchemy
 import subprocess
 import concurrent.futures
 from functools import partial
-import logging
 
 from sqlalchemy.sql.expression import func
 
-
-def start_logger():
-    handler = logging.StreamHandler()
-    logger = logging.getLogger()
-    logger.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
-    logger.addHandler(handler)
-
-    return logger
 
 check_digits = lambda x: all( [y in '0123456789' for y in x] ) and len(x)
 
@@ -175,7 +166,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_ready(self):
-        print('Entering on_ready...')
         discord.opus.load_opus(find_library('opus'))
 
         self.csession = aiohttp.ClientSession()
@@ -216,9 +206,9 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def play_sound(self, v_c, sound, volume):
-        #perms = v_c.permissions_for(v_c.guild.me)
+        perms = v_c.permissions_for(v_c.guild.me)
 
-        if True:
+        if perms.connect and perms.speak:
             src = sound.src
 
             try:
@@ -316,7 +306,7 @@ class BotClient(discord.AutoShardedClient):
             return web.Response(text='Missing parameters', status=400)
 
 
-    '''async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(self, member, before, after):
         user = session.query(User).filter(User.id == member.id).first()
         if user is None:
             return
@@ -330,7 +320,7 @@ class BotClient(discord.AutoShardedClient):
                 await self.play_sound(member.voice.channel, user.join_sound, guild_data.volume)
 
             else:
-                user.join_sound = None'''
+                user.join_sound = None
 
 
     async def on_message(self, message):
