@@ -30,6 +30,7 @@ import sqlalchemy
 import subprocess
 import concurrent.futures
 from functools import partial
+import logging
 
 from sqlalchemy.sql.expression import func
 
