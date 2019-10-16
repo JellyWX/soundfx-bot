@@ -316,7 +316,7 @@ class BotClient(discord.AutoShardedClient):
             return web.Response(text='Missing parameters', status=400)
 
 
-    async def on_voice_state_update(self, member, before, after):
+    '''async def on_voice_state_update(self, member, before, after):
         user = session.query(User).filter(User.id == member.id).first()
         if user is None:
             return
@@ -330,7 +330,7 @@ class BotClient(discord.AutoShardedClient):
                 await self.play_sound(member.voice.channel, user.join_sound, guild_data.volume)
 
             else:
-                user.join_sound = None
+                user.join_sound = None'''
 
 
     async def on_message(self, message):
