@@ -722,8 +722,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await asyncio.sleep(180)
 
 
-start_logger()
-
 client = BotClient(guild_subscriptions=False)
 
 app = web.Application()
