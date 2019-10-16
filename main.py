@@ -456,7 +456,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         user = session.query(User).filter(User.id == message.author.id).first()
 
         if len(user.sounds) >= config.max_sounds and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(self.MAX_SOUNDS, prefix=server.prefix))
+            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(config.max_sounds, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
