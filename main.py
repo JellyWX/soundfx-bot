@@ -734,7 +734,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
 start_logger()
 
-client = BotClient(message_cache=False)
+client = BotClient(guild_subscriptions=False)
 
 app = web.Application()
 app.add_routes([web.get('/play', client.on_web_ping)])
