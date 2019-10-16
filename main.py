@@ -37,7 +37,7 @@ from sqlalchemy.sql.expression import func
 def start_logger():
     handler = logging.StreamHandler()
     logger = logging.getLogger()
-    logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+    logger.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
     logger.addHandler(handler)
 
     return logger
