@@ -34,6 +34,14 @@ from functools import partial
 from sqlalchemy.sql.expression import func
 
 
+def start_logger():
+    handler = logging.StreamHandler()
+    logger = logging.getLogger()
+    logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+    logger.addHandler(handler)
+
+    return logger
+
 check_digits = lambda x: all( [y in '0123456789' for y in x] ) and len(x)
 
 class PermissionLevels(Enum):
@@ -206,9 +214,9 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def play_sound(self, v_c, sound, volume):
-        perms = v_c.permissions_for(v_c.guild.me)
+        #perms = v_c.permissions_for(v_c.guild.me)
 
-        if perms.connect and perms.speak:
+        if True:
             src = sound.src
 
             try:
