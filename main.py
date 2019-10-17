@@ -329,6 +329,10 @@ class BotClient(discord.AutoShardedClient):
             await self.play_sound(*res)
 
 
+    async def on_error(self, *):
+        session.rollback()
+        raise
+
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
