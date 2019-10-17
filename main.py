@@ -306,21 +306,27 @@ class BotClient(discord.AutoShardedClient):
             return web.Response(text='Missing parameters', status=400)
 
 
-    async def on_voice_state_update(self, member, before, after):
-        user = session.query(User).filter(User.id == member.id).first()
-        if user is None:
-            return
+    async def on_voice_state_update(self, *args):
+        def _play_greet(member, before, after):
+            user = session.query(User).filter(User.id == member.id).first()
+            if user is None:
+                return
 
-        guild_data = session.query(GuildData).filter_by(id=member.guild.id).first()
+            guild_data = session.query(GuildData).filter_by(id=member.guild.id).first()
 
-        if before.channel != after.channel and after.channel is not None \
-            and user.join_sound is not None:
+            if before.channel != after.channel and after.channel is not None \
+                and user.join_sound is not None:
 
-            if user.join_sound.public:
-                await self.play_sound(member.voice.channel, user.join_sound, guild_data.volume)
+                if user.join_sound.public:
+                    return (member.voice.channel, user.join_sound, guild_data.volume)
 
-            else:
-                user.join_sound = None
+                else:
+                    user.join_sound = None
+
+        res = await self.do_blocking( partial(_play_greet, *args) )
+
+        if res is not None:
+            await self.play_sound(*res)
 
 
     async def on_message(self, message):
