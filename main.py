@@ -329,7 +329,7 @@ class BotClient(discord.AutoShardedClient):
             await self.play_sound(*res)
 
 
-    async def on_error(self, *):
+    async def on_error(self, *args):
         session.rollback()
         raise
 
