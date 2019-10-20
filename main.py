@@ -66,12 +66,15 @@ class Command():
         await self.func(*args)
 
     def _check_managed_perms(self, member: discord.Member, guild_data: GuildData) -> bool:
-        if 'off' not in guild_data.roles and not member.guild_permissions.manage_guild:
+        if member.guild_permissions.manage_guild:
+            return True
+
+        elif len(guild_data.roles) > 0:
             for role in member.roles:
                 if role.id in guild_data.roles:
-                    return True
+                    return False
             else:
-                return False
+                return True
 
         else:
             return True
@@ -436,8 +439,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
 
     async def role(self, message, stripped, server):
-        if stripped == '@everyone':
-            server.roles = ['off']
+        if 'everyone' in stripped:
+            server.roles = []
 
             await message.channel.send('Role blacklisting disabled.')
 
@@ -449,8 +452,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
 
         else:
-            if server.roles[0] == 'off':
-                await message.channel.send('Please mention roles or `@everyone` to blacklist roles.')
+            if len(server.roles) == 0:
+                await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Whitelisting is currently disabled.')
             else:
                 await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format('>, <@&'.join([str(x) for x in server.roles])))
 
