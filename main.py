@@ -502,7 +502,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
                         session.add(sound)
 
-                        await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound. **Please do not delete the file from Discord.**'.format(name=stripped, prefix=server.prefix))
+                        await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
 
 
     async def play(self, message, stripped, server):
