@@ -254,11 +254,14 @@ class BotClient(discord.AutoShardedClient):
         else:
             for m in p_server.members:
                 if m.id == user:
-                    roles.extend([r.id for r in m.roles])
+                    for r in m.roles:
+                        if r.id == config.donor_role:
+                            return True
 
-        premium = bool(set([config.donor_role]) & set(roles))
+                    else:
+                        return False
 
-        return premium
+        return False
 
 
     async def store(self, url):
@@ -459,7 +462,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         user = session.query(User).filter(User.id == message.author.id).first()
 
-        if len(user.sounds) >= config.max_sounds and not premium:
+        if ( len(user.sounds) >= config.max_sounds ) and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(config.max_sounds, prefix=server.prefix))
 
         elif stripped == '':
@@ -621,7 +624,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             user = session.query(User).filter(User.id == message.author.id).first()
     
             self.delete_sound(session.query(Sound).filter(Sound.id == q.id))
-            await message.channel.send('Deleted `{}`. You have used {}/{} sounds.'.format(stripped, len(user.sounds), config.max_sounds))
+            await message.channel.send('Deleted `{}`. You have used {} sounds.'.format(stripped, len(user.sounds)))
 
 
     async def public(self, message, stripped, server):
