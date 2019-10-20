@@ -326,7 +326,7 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     user.join_sound = None
 
-        res = await self.do_blocking( partial(_play_greet, *args) )
+        res = _play_greet(*args)
 
         if res is not None:
             await self.play_sound(*res)
