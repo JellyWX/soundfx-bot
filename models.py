@@ -44,9 +44,6 @@ class User(Base):
     map_id = Column(Integer, primary_key=True)
     id = Column(BigInteger, unique=True)
 
-    join_sound_id = Column( Integer, ForeignKey('sounds.id', ondelete='SET NULL'), nullable=True )
-    join_sound = relationship('Sound', foreign_keys=[join_sound_id] )
-
     sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
 
     def __repr__(self):

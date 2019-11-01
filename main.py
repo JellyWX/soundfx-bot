@@ -312,29 +312,6 @@ class BotClient(discord.AutoShardedClient):
             return web.Response(text='Missing parameters', status=400)
 
 
-    async def on_voice_state_update(self, *args):
-        def _play_greet(member, before, after):
-            user = session.query(User).filter(User.id == member.id).first()
-            if user is None:
-                return
-
-            guild_data = session.query(GuildData).filter_by(id=member.guild.id).first()
-
-            if before.channel != after.channel and after.channel is not None \
-                and user.join_sound is not None:
-
-                if user.join_sound.public:
-                    return (member.voice.channel, user.join_sound, guild_data.volume)
-
-                else:
-                    user.join_sound = None
-
-        res = _play_greet(*args)
-
-        if res is not None:
-            await self.play_sound(*res)
-
-
     async def on_error(self, *args):
         session.rollback()
         raise
@@ -497,7 +474,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     if len(out) < 1:
                         await message.channel.send('File not recognized as being a valid audio file.')
 
-                    elif len(out) > 1000000 and premium:
+                    elif len(out) > 1000000:
                         await message.channel.send('Please only send audio files that are under 1MB serverside compressed. The bot uses Opus 28kbps compression when storing audio.')
 
                     else:
@@ -667,14 +644,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         elif 'random' in message.content.split(' ')[0]:
             for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()):
                 if length < 1900:
-                    g = self.get_guild(sound.server_id)
-
-                    if g is not None:
-                        name = g.name
-                    else:
-                        name = None
-
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
+                    content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
@@ -683,14 +653,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         else:
             for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
                 if length < 1900:
-                    g = self.get_guild(sound.server_id)
-
-                    if g is not None:
-                        name = g.name
-                    else:
-                        name = None
-
-                    content = 'ID: {}\nGuild: {}'.format(sound.id, name)
+                    content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
@@ -701,30 +664,6 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     break
 
         await message.channel.send(embed=embed)
-
-
-    async def greet(self, message, stripped, server):
-        user = session.query(User).filter(User.id == message.author.id).first()
-        stripped = stripped.lower()
-
-        if stripped == '' and user.join_sound is not None:
-            user.join_sound = None
-            await message.channel.send('You have unassigned your greet sound')
-
-        else:
-            if user is None:
-                user = User(id=message.author.id, join_sound=None)
-                session.add(user)
-                session.commit()
-
-            sound = self.get_sound_by_string(stripped, message.guild.id, message.author.id)
-
-            if sound is not None:
-                user.join_sound = sound
-                await message.channel.send('Your greet sound has been set.')
-
-            else:
-                await message.channel.send('No public sound found.')
 
 
     async def cleanup(self):
