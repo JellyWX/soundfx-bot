@@ -105,8 +105,6 @@ class BotClient(discord.AutoShardedClient):
             'prefix' : Command(self.change_prefix, PermissionLevels.RESTRICTED),
             'roles' : Command(self.role, PermissionLevels.RESTRICTED),
 
-            'greet' : Command(self.greet, PermissionLevels.MANAGED),
-
             'public' : Command(self.public, PermissionLevels.MANAGED),
 
             'list' : Command(self.list, PermissionLevels.UNRESTRICTED),
