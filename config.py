@@ -11,7 +11,7 @@ class Config(IniDeserializer):
     fixed_donors = ListField(map=lambda x: int(x.strip()), default=[])
 
     max_sounds = IntegerField()
-    max_sound_store = IntegerField()
+    caching_period = IntegerField()
 
     user = Field(strict=True)
     passwd = Field(strict=False)
@@ -20,6 +20,6 @@ class Config(IniDeserializer):
 
     TOKENS = Section(bot_token, dbl_token)
     MYSQL = Section(user, passwd, host, database)
-    DEFAULT = Section(patreon_server, donor_role, fixed_donors, max_sounds, max_sound_store)
+    DEFAULT = Section(patreon_server, donor_role, fixed_donors, max_sounds, caching_period)
 
 config = Config(filename='config.ini')

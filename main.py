@@ -17,6 +17,7 @@ from ctypes.util import find_library
 import discord
 import sys
 import os
+from time import time as unix_time
 import types
 import typing
 from enum import Enum
@@ -113,8 +114,8 @@ class BotClient(discord.AutoShardedClient):
             'random' : Command(self.search, PermissionLevels.UNRESTRICTED),
         }
 
-
         self.executor = concurrent.futures.ThreadPoolExecutor()
+
 
     @staticmethod
     def get_sound_by_string(string: str, server_id: int, uploader_id: int) -> typing.Optional[Sound]:
@@ -223,13 +224,13 @@ class BotClient(discord.AutoShardedClient):
             if voice.is_playing():
                 voice.stop()
 
-            self.file_indexing += 1
-            self.file_indexing %= config.max_sound_store
+            filename = '/tmp/soundfx-{}-{}'.format(sound.id, int( unix_time() // config.caching_period ))
 
-            filename = '/tmp/file-{}'.format(self.file_indexing)
+            if not os.path.isfile(filename):
+                print('File not held. Caching into {}'.format(filename))
 
-            with open(filename, 'wb') as f:
-                f.write(src)
+                with open(filename, 'wb') as f:
+                    f.write(src)
 
             if volume == 100:
                 voice.play(discord.FFmpegPCMAudio(filename))
