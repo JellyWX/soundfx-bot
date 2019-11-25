@@ -22,7 +22,7 @@ import types
 import typing
 from enum import Enum
 import aiohttp
-from aiohttp import web
+from aio_pika import connect, IncomingMessage
 import asyncio
 import json
 from configparser import SafeConfigParser
@@ -31,6 +31,7 @@ import sqlalchemy
 import subprocess
 import concurrent.futures
 from functools import partial
+
 
 from sqlalchemy.sql.expression import func
 
@@ -285,35 +286,35 @@ class BotClient(discord.AutoShardedClient):
         s.delete(synchronize_session='fetch')
 
 
-    async def on_web_ping(self, request):
-        params = request.rel_url.query
+    async def on_web_ping(self, message: IncomingMessage):
 
-        if all(x in params.keys() for x in ('id', 'user')):
-            members = [y for y in self.get_all_members() if y.id == int(params['user']) and y.voice is not None]
+        def parse_body(message_body: str):
 
-            if len(members) == 0:
-                return web.Response(text='Not in voice channel', status=400)
+            return [int(x) for x in message_body.split(b',')]
 
-            else:
-                member = members[0]
+        sound, user = parse_body(message.body)
 
-            s = session.query(Sound).get(params['id'])
+        members = [y for y in self.get_all_members() if y.id == user and y.voice is not None]
 
-            server = session.query(GuildData).filter(GuildData.id == member.guild.id).first()
-
-            volume: int = server.volume if server is not None else 100
-
-            await self.play_sound(member.voice.channel, s, volume)
-
-            return web.Response(text='OK')
+        if len(members) == 0:
+            return
 
         else:
-            return web.Response(text='Missing parameters', status=400)
+            member = members[0]
+
+        s = session.query(Sound).get(sound)
+
+        server = session.query(GuildData).filter(GuildData.id == member.guild.id).first()
+
+        volume: int = server.volume if server is not None else 100
+
+        await self.play_sound(member.voice.channel, s, volume)
 
 
     async def on_error(self, *args):
         session.rollback()
         raise
+
 
     async def on_message(self, message):
 
@@ -676,16 +677,20 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await asyncio.sleep(180)
 
 
+async def setup_aio_pika(loop):
+    connection = await connect('amqp://guest:guest@localhost', loop=loop)
+
+    channel = await connection.channel()
+
+    queue = await channel.declare_queue('soundfx')
+
+    await queue.consume(client.on_web_ping, no_ack=True)
+
+
 client = BotClient(max_messages=100, guild_subscriptions=False)
-
-app = web.Application()
-app.add_routes([web.get('/play', client.on_web_ping)])
-
-handler = app.make_handler()
 
 client.loop.create_task(client.cleanup())
 
-coro = client.loop.create_server(handler, host='127.0.0.1', port=7765)
-client.loop.create_task(coro)
+client.loop.create_task(setup_aio_pika(client.loop))
 
 client.run(config.bot_token)
