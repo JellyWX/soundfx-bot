@@ -12,8 +12,7 @@ Base = declarative_base()
 class GuildData(Base):
     __tablename__ = 'servers'
 
-    map_id = Column(Integer, primary_key=True)
-    id = Column(BigInteger, unique=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=False)
     prefix = Column( String(5), nullable=False, default='?' )
     roles = Column( NestedMutableJson )
     sounds = relationship('Sound', backref='server', lazy='dynamic')
@@ -41,8 +40,9 @@ class Sound(Base):
 class User(Base):
     __tablename__ = 'users'
 
-    map_id = Column(Integer, primary_key=True)
-    id = Column(BigInteger, unique=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=False)
+
+    voice_channel = Column(BigInteger, index=True)
 
     sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
 

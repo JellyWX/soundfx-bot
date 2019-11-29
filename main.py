@@ -187,6 +187,19 @@ class BotClient(discord.AutoShardedClient):
         await self.send()
 
 
+    async def on_voice_state_update(self, member, _, after):
+        user = session.query(User).get(member.id)
+
+        if user is not None:
+            if after.channel is None:
+                user.voice_channel = None
+
+            else:
+                user.voice_channel = after.channel.id
+
+            session.commit()
+
+
     async def welcome(self, guild, *args):
         if isinstance(guild, discord.Message):
             guild = guild.guild
@@ -288,27 +301,35 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_web_ping(self, message: IncomingMessage):
 
+        async def find_channel(channel_id):
+
+            c = self.get_channel(channel_id)
+
+            if c is None:
+                c = await self.fetch_channel(channel_id)
+
+            return c
+
+
         def parse_body(message_body: str):
 
             return [int(x) for x in message_body.split(b',')]
 
+
         sound, user = parse_body(message.body)
 
-        members = [y for y in self.get_all_members() if y.id == user and y.voice is not None]
+        member = session.query(User).get(user)
+        sound = session.query(Sound).get(sound)
 
-        if len(members) == 0:
-            return
+        if member is not None and member.voice_channel is not None:
+            
+            channel = await find_channel(member.voice_channel)
 
-        else:
-            member = members[0]
+            server = session.query(GuildData).get(channel.guild.id)
 
-        s = session.query(Sound).get(sound)
+            volume: int = server.volume if server is not None else 100
 
-        server = session.query(GuildData).filter(GuildData.id == member.guild.id).first()
-
-        volume: int = server.volume if server is not None else 100
-
-        await self.play_sound(member.voice.channel, s, volume)
+            await self.play_sound(channel, sound, volume)
 
 
     async def on_error(self, *args):
@@ -321,12 +342,12 @@ class BotClient(discord.AutoShardedClient):
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
             return
 
-        if session.query(GuildData).filter_by(id=message.guild.id).first() is None:
+        if session.query(GuildData).get(message.guild.id) is None:
             s = GuildData(id=message.guild.id, prefix='?', roles=['off'])
             session.add(s)
             session.commit()
 
-        if session.query(User).filter_by(id=message.author.id).first() is None:
+        if session.query(User).get(message.author.id) is None:
             s = User(id=message.author.id)
             session.add(s)
             session.commit()
@@ -342,7 +363,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def get_cmd(self, message):
 
-        guild_data: GuildData = session.query(GuildData).filter_by(id=message.guild.id).first()
+        guild_data: GuildData = session.query(GuildData).get(message.guild.id)
         prefix: str = guild_data.prefix
 
         command: typing.Optional[str] = None
@@ -440,7 +461,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         premium = await self.check_premium(message.author.id)
 
-        user = session.query(User).filter(User.id == message.author.id).first()
+        user = session.query(User).get(message.author.id)
 
         if ( len(user.sounds) >= config.max_sounds ) and not premium:
             await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(config.max_sounds, prefix=server.prefix))
@@ -554,7 +575,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         strings = asyncio.Queue()
 
         if 'me' in stripped:
-            user = session.query(User).filter(User.id == message.author.id).first()
+            user = session.query(User).get(message.author.id)
             a = user.sounds
         else:
             a = server.sounds
@@ -601,7 +622,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
 
         else:
-            user = session.query(User).filter(User.id == message.author.id).first()
+            user = session.query(User).get(message.author.id)
     
             self.delete_sound(session.query(Sound).filter(Sound.id == q.id))
             await message.channel.send('Deleted `{}`. You have used {} sounds.'.format(stripped, len(user.sounds)))
