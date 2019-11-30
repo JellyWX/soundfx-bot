@@ -321,6 +321,8 @@ class BotClient(discord.AutoShardedClient):
         member = session.query(User).get(user)
         sound = session.query(Sound).get(sound)
 
+        print('Received web ping')
+
         if member is not None and member.voice_channel is not None:
             
             channel = await find_channel(member.voice_channel)
@@ -708,7 +710,7 @@ async def setup_aio_pika(loop):
     await queue.consume(client.on_web_ping, no_ack=True)
 
 
-client = BotClient(max_messages=100, guild_subscriptions=False)
+client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 
 client.loop.create_task(client.cleanup())
 
