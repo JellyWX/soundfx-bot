@@ -256,28 +256,30 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
 
-    async def check_premium(self, user):
+    async def check_premium(self, memberid) -> bool:
         if user in config.fixed_donors:
-            return True
-
-        roles: typing.List[int] = []
-        p_server = self.get_guild(config.patreon_server)
-
-        if p_server is None:
 
             return True
 
         else:
-            for m in p_server.members:
-                if m.id == user:
-                    for r in m.roles:
-                        if r.id == config.donor_role:
-                            return True
 
-                    else:
-                        return False
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
 
-        return False
+            head = {
+                'authorization': 'Bot {}'.format(self.config.token),
+                'content-type' : 'application/json'
+            }
+
+            async with self.csession.get(url, headers=head) as resp:
+
+                if resp.status == 200:
+                    member = await resp.json()
+                    roles = [int(x) for x in member['roles']]
+
+                else:
+                    return False
+
+            return config.donor_role in roles
 
 
     async def store(self, url):
