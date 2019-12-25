@@ -257,7 +257,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def check_premium(self, memberid) -> bool:
-        if user in config.fixed_donors:
+        if memberid in config.fixed_donors:
 
             return True
 
