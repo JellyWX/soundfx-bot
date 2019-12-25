@@ -263,7 +263,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
 
-            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(config.patreon_server, memberid)
 
             head = {
                 'authorization': 'Bot {}'.format(config.bot_token),
