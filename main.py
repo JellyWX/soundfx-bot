@@ -525,16 +525,17 @@ There is a maximum sound limit per user. This can be removed by donating at http
             if s is None:
 
                 await message.channel.send(
-                    'Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(
+                    'Sound `{0}` could not be found. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(
                         stripped, server.prefix))
 
             else:
-                g = self.get_guild(s.server_id)
+                if s.server.name is None:
+                    g = self.get_guild(s.server_id)
 
-                if g is not None:
-                    name = g.name
-                else:
-                    name = None
+                    if g is not None:
+                        s.server.name = g.name
+
+                name = s.server.name
 
                 await message.channel.send('Playing sound **{name}** (ID `{id}`) from **{guild}**'.format(
                     name=s.name,
