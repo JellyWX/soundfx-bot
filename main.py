@@ -174,15 +174,14 @@ class BotClient(discord.AutoShardedClient):
 
         await self.welcome(guild)
 
+        self.update_guild_name(guild)
+
     async def on_guild_remove(self, _guild):
         await self.send()
 
     # noinspection PyMethodMayBeStatic
     async def on_guild_update(self, _before, after):
-        g = session.query(GuildData).filter(GuildData.id == after.id).first()
-
-        if g is not None:
-            g.name = after.name
+        self.update_guild_name(after)
 
     # noinspection PyMethodMayBeStatic
     async def on_voice_state_update(self, member, _, after):
@@ -196,6 +195,13 @@ class BotClient(discord.AutoShardedClient):
                 user.voice_channel = after.channel.id
 
             session.commit()
+
+    @staticmethod
+    def update_guild_name(guild):
+        g = session.query(GuildData).filter(GuildData.id == guild.id).first()
+
+        if g is not None:
+            g.name = guild.name
 
     @staticmethod
     async def welcome(guild, *_args):
@@ -453,6 +459,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     'Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format(
                         '>, <@&'.join([str(x) for x in server.roles])))
 
+    # noinspection PyArgumentList
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
 
@@ -512,6 +519,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                             'Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(
                                 name=stripped, prefix=server.prefix))
 
+    # noinspection PyUnresolvedReferences
     async def play(self, message, stripped, server):
         stripped = stripped.lower()
 
