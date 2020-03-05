@@ -669,26 +669,34 @@ There is a maximum sound limit per user. This can be removed by donating at http
         length = 0
 
         if 'popular' in message.content.split(' ')[0]:
-            for sound in session.query(Sound).filter(Sound.public).order_by(Sound.plays.desc()):
-                if length < 1900:
+            for sound in session.query(Sound).filter(Sound.public).order_by(Sound.plays.desc()).limit(25):
+                if length < 2000:
                     content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
                     length += len(content) + len(sound.name)
+
+                else:
+                    break
 
         elif 'random' in message.content.split(' ')[0]:
-            for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()):
-                if length < 1900:
+            for sound in session.query(Sound).filter(Sound.public).order_by(func.rand()).limit(25):
+                if length < 2000:
                     content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
 
                     length += len(content) + len(sound.name)
 
+                else:
+                    break
+
         else:
-            for sound in session.query(Sound).filter(Sound.public).filter(Sound.name.ilike('%{}%'.format(stripped))):
-                if length < 1900:
+            for sound in session.query(Sound).filter(Sound.public).filter(
+                    Sound.name.ilike('%{}%'.format(stripped))).limit(25):
+
+                if length < 2000:
                     content = 'ID: {}\nPlays: {}'.format(sound.id, sound.plays)
 
                     embed.add_field(name=sound.name, value=content, inline=True)
