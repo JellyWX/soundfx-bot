@@ -1,4 +1,4 @@
-'''
+"""
 247203937189363712
 335269633542062080
 148600183754588160
@@ -8,44 +8,43 @@
 271115901426728961
 137377824037142528
 190654952362737664
-'''
+"""
+import re
 
 from models import GuildData, session, User, Sound
 from config import config
 
 from ctypes.util import find_library
 import discord
-import sys
 import os
 from time import time as unix_time
-import types
 import typing
 from enum import Enum
 import aiohttp
 from aio_pika import connect, IncomingMessage
 import asyncio
 import json
-from configparser import SafeConfigParser
 import traceback
-import sqlalchemy
 import subprocess
 import concurrent.futures
 from functools import partial
 
-
 from sqlalchemy.sql.expression import func
 
 
-check_digits = lambda x: all( [y in '0123456789' for y in x] ) and len(x)
+def check_digits(x: str) -> bool:
+    return len(x) and all([y in '0123456789' for y in x])
+
 
 class PermissionLevels(Enum):
     UNRESTRICTED = 0
     MANAGED = 1
     RESTRICTED = 2
 
-class Command():
-    def __init__(self, func: types.FunctionType, permission_level: PermissionLevels):
-        self.func = func
+
+class Command:
+    def __init__(self, function_call: (discord.Message, str, GuildData), permission_level: PermissionLevels):
+        self.func = function_call
         self.permission_level = permission_level
 
     async def call(self, caller: discord.Member, guild_data: GuildData, *args) -> typing.Optional[str]:
@@ -67,7 +66,8 @@ class Command():
     async def _call_func(self, *args):
         await self.func(*args)
 
-    def _check_managed_perms(self, member: discord.Member, guild_data: GuildData) -> bool:
+    @staticmethod
+    def _check_managed_perms(member: discord.Member, guild_data: GuildData) -> bool:
         if member.guild_permissions.manage_guild:
             return True
 
@@ -91,50 +91,47 @@ class BotClient(discord.AutoShardedClient):
         self.file_indexing = 0
 
         self.commands = {
-            'ping' : Command(self.ping, PermissionLevels.UNRESTRICTED),
-            'help' : Command(self.help, PermissionLevels.UNRESTRICTED),
-            'info' : Command(self.info, PermissionLevels.UNRESTRICTED),
-            'invite' : Command(self.info, PermissionLevels.UNRESTRICTED),
+            'ping': Command(self.ping, PermissionLevels.UNRESTRICTED),
+            'help': Command(self.help, PermissionLevels.UNRESTRICTED),
+            'info': Command(self.info, PermissionLevels.UNRESTRICTED),
+            'invite': Command(self.info, PermissionLevels.UNRESTRICTED),
 
-            'upload' : Command(self.wait_for_file, PermissionLevels.MANAGED),
-            'delete' : Command(self.delete, PermissionLevels.MANAGED),
+            'upload': Command(self.wait_for_file, PermissionLevels.MANAGED),
+            'delete': Command(self.delete, PermissionLevels.MANAGED),
 
-            'play' : Command(self.play, PermissionLevels.MANAGED),
-            'p' : Command(self.play, PermissionLevels.MANAGED),
-            'stop' : Command(self.stop, PermissionLevels.MANAGED),
-            'volume' : Command(self.volume, PermissionLevels.MANAGED),
+            'play': Command(self.play, PermissionLevels.MANAGED),
+            'p': Command(self.play, PermissionLevels.MANAGED),
+            'stop': Command(self.stop, PermissionLevels.MANAGED),
+            'volume': Command(self.volume, PermissionLevels.MANAGED),
 
-            'prefix' : Command(self.change_prefix, PermissionLevels.RESTRICTED),
-            'roles' : Command(self.role, PermissionLevels.RESTRICTED),
+            'prefix': Command(self.change_prefix, PermissionLevels.RESTRICTED),
+            'roles': Command(self.role, PermissionLevels.RESTRICTED),
 
-            'public' : Command(self.public, PermissionLevels.MANAGED),
+            'public': Command(self.public, PermissionLevels.MANAGED),
 
-            'list' : Command(self.list, PermissionLevels.UNRESTRICTED),
-            'search' : Command(self.search, PermissionLevels.UNRESTRICTED),
-            'popular' : Command(self.search, PermissionLevels.UNRESTRICTED),
-            'random' : Command(self.search, PermissionLevels.UNRESTRICTED),
+            'list': Command(self.list, PermissionLevels.UNRESTRICTED),
+            'search': Command(self.search, PermissionLevels.UNRESTRICTED),
+            'popular': Command(self.search, PermissionLevels.UNRESTRICTED),
+            'random': Command(self.search, PermissionLevels.UNRESTRICTED),
         }
 
+        self.aiohttp_session: typing.Optional[aiohttp.client.ClientSession] = None
         self.executor = concurrent.futures.ThreadPoolExecutor()
-
 
     @staticmethod
     def get_sound_by_string(string: str, server_id: int, uploader_id: int) -> typing.Optional[Sound]:
-        string = string.lower()
+        r = re.match(r'(?:(?i)ID:)?(\d+)', string)
 
-        if check_digits(string):
-            return session.query(Sound).get(int(string))
-
-        elif string.startswith('id:') and check_digits(string[3:]):
-            return session.query(Sound).get(int(string[3:]))
+        if r is not None:
+            return session.query(Sound).get(int(r.groups()[0]))
 
         else:
-            q = session.query(Sound).filter(Sound.name == string) \
+            q = session.query(Sound).filter(Sound.name == string.lower()) \
                 .order_by(
-                    Sound.server_id != server_id,
-                    Sound.uploader_id != uploader_id,
-                    Sound.public == False,
-                    func.rand()) \
+                Sound.server_id != server_id,
+                Sound.uploader_id != uploader_id,
+                Sound.public == False,
+                func.rand()) \
                 .first()
 
             if q is None or (q.server_id != server_id and q.uploader_id != uploader_id and not q.public):
@@ -143,50 +140,51 @@ class BotClient(discord.AutoShardedClient):
             else:
                 return q
 
-
     async def do_blocking(self, method):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
-
 
     async def send(self):
         guild_count = len(self.guilds)
 
         if config.dbl_token is not None:
-
             dump = json.dumps({
-                'server_count': len(client.guilds)
+                'server_count': guild_count
             })
 
             head = {
                 'authorization': config.dbl_token,
-                'content-type' : 'application/json'
+                'content-type': 'application/json'
             }
 
             url = 'https://discordbots.org/api/bots/stats'
-            async with self.csession.post(url, data=dump, headers=head) as resp:
+            async with self.aiohttp_session.post(url, data=dump, headers=head) as resp:
                 print('returned {0.status} for {1}'.format(resp, dump))
-
 
     async def on_ready(self):
         discord.opus.load_opus(find_library('opus'))
 
-        self.csession = aiohttp.ClientSession()
+        self.aiohttp_session = aiohttp.ClientSession()
 
         print('Logged in as')
         print(self.user.id)
-
 
     async def on_guild_join(self, guild):
         await self.send()
 
         await self.welcome(guild)
 
-
-    async def on_guild_remove(self, guild):
+    async def on_guild_remove(self, _guild):
         await self.send()
 
+    # noinspection PyMethodMayBeStatic
+    async def on_guild_update(self, _before, after):
+        g = session.query(GuildData).filter(GuildData.id == after.id).first()
 
+        if g is not None:
+            g.name = after.name
+
+    # noinspection PyMethodMayBeStatic
     async def on_voice_state_update(self, member, _, after):
         user = session.query(User).get(member.id)
 
@@ -199,8 +197,8 @@ class BotClient(discord.AutoShardedClient):
 
             session.commit()
 
-
-    async def welcome(self, guild, *args):
+    @staticmethod
+    async def welcome(guild, *_args):
         if isinstance(guild, discord.Message):
             guild = guild.guild
 
@@ -209,17 +207,15 @@ class BotClient(discord.AutoShardedClient):
                 await channel.send('Thank you for adding SoundFX! To begin, type `?info` to learn more.')
                 break
 
-
     async def check_and_play(self, guild, channel, caller, sound, guild_data):
         if caller.voice is None:
-            await channel.send('You aren\'t in a voice channel.')
+            await channel.send("You aren't in a voice channel.")
 
         elif not caller.voice.channel.permissions_for(guild.me).connect:
             await channel.send('No permissions to connect to channel.')
 
         else:
             await self.play_sound(caller.voice.channel, sound, guild_data.volume)
-
 
     async def play_sound(self, v_c, sound, volume):
         perms = v_c.permissions_for(v_c.guild.me)
@@ -238,7 +234,7 @@ class BotClient(discord.AutoShardedClient):
             if voice.is_playing():
                 voice.stop()
 
-            filename = '/tmp/soundfx-{}-{}'.format(sound.id, int( unix_time() // config.caching_period ))
+            filename = '/tmp/soundfx-{}-{}'.format(sound.id, int(unix_time() // config.caching_period))
 
             if not os.path.isfile(filename):
                 print('File not held. Caching into {}'.format(filename))
@@ -255,22 +251,21 @@ class BotClient(discord.AutoShardedClient):
 
             session.commit()
 
-
-    async def check_premium(self, memberid) -> bool:
-        if memberid in config.fixed_donors:
+    async def check_premium(self, member_id) -> bool:
+        if member_id in config.fixed_donors:
 
             return True
 
         else:
 
-            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(config.patreon_server, memberid)
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(config.patreon_server, member_id)
 
             head = {
-                'authorization': 'Bot {}'.format(config.bot_token),
-                'content-type' : 'application/json'
+                'Authorization': 'Bot {}'.format(config.bot_token),
+                'Content-Type': 'application/json'
             }
 
-            async with self.csession.get(url, headers=head) as resp:
+            async with self.aiohttp_session.get(url, headers=head) as resp:
 
                 if resp.status == 200:
                     member = await resp.json()
@@ -281,10 +276,10 @@ class BotClient(discord.AutoShardedClient):
 
             return config.donor_role in roles
 
-
     async def store(self, url):
-        def b_store(url):
-            sub = subprocess.Popen(('ffmpeg', '-i', url, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'), stdout=subprocess.PIPE)
+        def b_store(u):
+            sub = subprocess.Popen(('ffmpeg', '-i', u, '-loglevel', 'error', '-b:a', '28000', '-f', 'opus', 'pipe:1'),
+                                   stdout=subprocess.PIPE)
 
             out = sub.stdout.read()
             if len(out) < 1:
@@ -293,13 +288,12 @@ class BotClient(discord.AutoShardedClient):
             else:
                 return out
 
-        m = await self.do_blocking( partial(b_store, url) )
+        m = await self.do_blocking(partial(b_store, url))
         return m
 
-
-    def delete_sound(self, s):
+    @staticmethod
+    def delete_sound(s):
         s.delete(synchronize_session='fetch')
-
 
     async def on_web_ping(self, message: IncomingMessage):
 
@@ -312,11 +306,9 @@ class BotClient(discord.AutoShardedClient):
 
             return c
 
-
         def parse_body(message_body: str):
 
             return [int(x) for x in message_body.split(b',')]
-
 
         sound, user = parse_body(message.body)
 
@@ -326,7 +318,6 @@ class BotClient(discord.AutoShardedClient):
         print('Received web ping')
 
         if member is not None and member.voice_channel is not None:
-            
             channel = await find_channel(member.voice_channel)
 
             server = session.query(GuildData).get(channel.guild.id)
@@ -335,12 +326,11 @@ class BotClient(discord.AutoShardedClient):
 
             await self.play_sound(channel, sound, volume)
 
-
     async def on_error(self, *args):
         session.rollback()
         raise
 
-
+    # noinspection PyBroadException
     async def on_message(self, message):
 
         if isinstance(message.channel, discord.DMChannel) or message.author.bot or message.content is None:
@@ -357,13 +347,13 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         try:
-            if message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(message.guild.me).embed_links:
+            if message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(
+                    message.guild.me).embed_links:
                 await self.get_cmd(message)
                 session.commit()
 
         except Exception as e:
             traceback.print_exc()
-
 
     async def get_cmd(self, message):
 
@@ -371,6 +361,7 @@ class BotClient(discord.AutoShardedClient):
         prefix: str = guild_data.prefix
 
         command: typing.Optional[str] = None
+        stripped: typing.Optional[str] = None
 
         if message.content[0:len(prefix)] == prefix:
             command = (message.content + ' ')[len(prefix):message.content.find(' ')]
@@ -382,12 +373,13 @@ class BotClient(discord.AutoShardedClient):
 
         if command in self.commands.keys():
             print(message.content)
-            response: typing.Optional[str] = await self.commands[command].call(message.author, guild_data, message, stripped, guild_data)
+            response: typing.Optional[str] = await self.commands[command].call(message.author, guild_data, message,
+                                                                               stripped, guild_data)
             if response is not None:
                 await message.channel.send(response)
 
-
-    async def change_prefix(self, message, stripped, guild_data):
+    @staticmethod
+    async def change_prefix(message, stripped, guild_data):
         if stripped:
             stripped += ' '
             new = stripped[:stripped.find(' ')]
@@ -402,23 +394,21 @@ class BotClient(discord.AutoShardedClient):
         else:
             await message.channel.send('Please use this command as `{}prefix <prefix>`'.format(guild_data.prefix))
 
-
-    async def ping(self, message, stripped, server):
+    @staticmethod
+    async def ping(message, _stripped, _server):
         t = message.created_at.timestamp()
         e = await message.channel.send('pong')
         delta = e.created_at.timestamp() - t
 
         await e.edit(content='Pong! {}ms round trip'.format(round(delta * 1000)))
 
-
     async def help(self, message, stripped, server):
-        embed = discord.Embed(title='HELP', color=self.EMBED_COLOR, description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
+        embed = discord.Embed(title='HELP', color=self.EMBED_COLOR,
+                              description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
-
     async def info(self, message, stripped, server):
-        em = discord.Embed(title='INFO', color=self.EMBED_COLOR, description=
-        '''Default prefix: `?`
+        em = discord.Embed(title='INFO', color=self.EMBED_COLOR, description='''Default prefix: `?`
 
 Reset prefix: `@{user} prefix ?`
 Help: `{p}help`
@@ -435,12 +425,12 @@ There is a maximum sound limit per user. This can be removed by donating at http
 *If you have enquiries about new features, please send to the discord server*
 *If you have enquiries about bot development for you or your server, please DM me*
         '''.format(user=self.user.name, p=server.prefix)
-        )
+                           )
 
         await message.channel.send(embed=em)
 
-
-    async def role(self, message, stripped, server):
+    @staticmethod
+    async def role(message, stripped, server):
         if 'everyone' in stripped:
             server.roles = []
 
@@ -451,14 +441,17 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
             server.roles = roles
 
-            await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
+            await message.channel.send(
+                'Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
 
         else:
             if len(server.roles) == 0:
-                await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Whitelisting is currently disabled.')
+                await message.channel.send(
+                    'Please mention roles or `@everyone` to blacklist roles. Whitelisting is currently disabled.')
             else:
-                await message.channel.send('Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format('>, <@&'.join([str(x) for x in server.roles])))
-
+                await message.channel.send(
+                    'Please mention roles or `@everyone` to blacklist roles. Current roles are <@&{}>'.format(
+                        '>, <@&'.join([str(x) for x in server.roles])))
 
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
@@ -467,14 +460,17 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         user = session.query(User).get(message.author.id)
 
-        if ( len(user.sounds) >= config.max_sounds ) and not premium:
-            await message.channel.send('Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(config.max_sounds, prefix=server.prefix))
+        if (len(user.sounds) >= config.max_sounds) and not premium:
+            await message.channel.send(
+                'Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(
+                    config.max_sounds, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
         elif check_digits(stripped):
-            await message.channel.send('Please use at least one non-numerical character in your sound\'s name (this helps distinguish it from IDs)')
+            await message.channel.send(
+                'Please use at least one non-numerical character in your sound\'s name (this helps distinguish it from IDs)')
 
         elif len(stripped) > 20:
             await message.channel.send('Please choose a shorter name. You used {}/20 characters.'.format(len(stripped)))
@@ -483,15 +479,19 @@ There is a maximum sound limit per user. This can be removed by donating at http
             sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
 
             if sound.first() is not None:
-                await message.channel.send('A sound in this server already exists under that name. Please either delete that sound first, or choose a different name.')
+                await message.channel.send(
+                    'A sound in this server already exists under that name. Please either delete that sound first, or choose a different name.')
 
             else:
-                await message.channel.send('Saving as: `{}`. Send an audio file or send any other message to cancel.'.format(stripped))
+                await message.channel.send(
+                    'Saving as: `{}`. Send an audio file or send any other message to cancel.'.format(stripped))
 
-                msg = await self.wait_for('message', check=lambda x: x.author == message.author and x.channel == message.channel)
+                msg = await self.wait_for('message',
+                                          check=lambda x: x.author == message.author and x.channel == message.channel)
 
                 if msg.attachments == []:
-                    await message.channel.send('Please attach an audio file following the `{}upload` command. Aborted.'.format(server.prefix))
+                    await message.channel.send(
+                        'Please attach an audio file following the `{}upload` command. Aborted.'.format(server.prefix))
 
                 else:
                     out = await self.store(msg.attachments[0].url)
@@ -500,28 +500,33 @@ There is a maximum sound limit per user. This can be removed by donating at http
                         await message.channel.send('File not recognized as being a valid audio file.')
 
                     elif len(out) > 1000000:
-                        await message.channel.send('Please only send audio files that are under 1MB serverside compressed. The bot uses Opus 28kbps compression when storing audio.')
+                        await message.channel.send(
+                            'Please only send audio files that are under 1MB serverside compressed. The bot uses Opus 28kbps compression when storing audio.')
 
                     else:
                         sound = Sound(src=out, server=server, user=user, name=stripped)
 
                         session.add(sound)
 
-                        await message.channel.send('Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(name=stripped, prefix=server.prefix))
-
+                        await message.channel.send(
+                            'Sound saved as `{name}`! Use `{prefix}play {name}` to play the sound.'.format(
+                                name=stripped, prefix=server.prefix))
 
     async def play(self, message, stripped, server):
         stripped = stripped.lower()
 
         if stripped == '':
-            await message.channel.send('You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
+            await message.channel.send(
+                'You must specify the sound you wish to play. Use `{}list` to view all sounds.'.format(server.prefix))
 
         else:
             s: typing.Optional[Sound] = self.get_sound_by_string(stripped, message.guild.id, message.author.id)
 
             if s is None:
 
-                await message.channel.send('Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(stripped, server.prefix))
+                await message.channel.send(
+                    'Sound `{0}` could not be found in server or in Sound Repository by name. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(
+                        stripped, server.prefix))
 
             else:
                 g = self.get_guild(s.server_id)
@@ -532,17 +537,17 @@ There is a maximum sound limit per user. This can be removed by donating at http
                     name = None
 
                 await message.channel.send('Playing sound **{name}** (ID `{id}`) from **{guild}**'.format(
-                    name = s.name,
-                    id = s.id,
-                    guild = name,
-                    pref = server.prefix
-                    )
+                    name=s.name,
+                    id=s.id,
+                    guild=name,
+                    pref=server.prefix
+                )
                 )
 
                 await self.check_and_play(message.guild, message.channel, message.author, s, server)
 
-
-    async def volume(self, message, stripped, server):
+    @staticmethod
+    async def volume(message, stripped, server):
         stripped = stripped.replace('%', '')
         if check_digits(stripped):
             new_vol: int = int(stripped)
@@ -551,16 +556,20 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 await message.channel.send('Volume changed')
 
             else:
-                await message.channel.send('Sorry, but that volume is not valid. Volume must be greater than 0 and smaller than 250 (default: 100).')
+                await message.channel.send(
+                    'Provided volume is invalid. Volume must be greater than 0 and smaller than 250 (default: 100).')
 
         elif stripped == '':
-            await message.channel.send('Current server volume: {vol}%. Change the volume with ```{prefix}volume <new volume>```'.format(vol=server.volume, prefix=server.prefix))
+            await message.channel.send(
+                'Current server volume: {vol}%. Change the volume with ```{prefix}volume <new volume>```'.format(
+                    vol=server.volume, prefix=server.prefix))
 
         else:
-            await message.channel.send('Couldn\'t interpret new volume. Please use as ```{prefix}volume <new volume>```'.format(prefix=server.prefix))
-        
+            await message.channel.send(
+                "Couldn't interpret new volume. Please use as ```{prefix}volume <new volume>```".format(
+                    prefix=server.prefix))
 
-    async def stop(self, message, stripped, server):
+    async def stop(self, message, _stripped, _server):
 
         voice = [v for v in self.voice_clients if v.channel.guild == message.guild]
         if len(voice) == 0:
@@ -568,8 +577,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
         else:
             await voice[0].disconnect(force=True)
 
-
-    async def list(self, message, stripped, server):
+    @staticmethod
+    async def list(message, stripped, server):
 
         async def drain(queue):
             while not queue.empty():
@@ -610,48 +619,50 @@ There is a maximum sound limit per user. This can be removed by donating at http
         if len(current_buffer) > 0:
             await message.channel.send(current_buffer.strip(', '))
 
-
     async def delete(self, message, stripped, server):
         stripped = stripped.lower()
 
         q = session.query(Sound) \
             .filter(Sound.name == stripped) \
             .filter(
-                (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
-            ) \
+            (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
+        ) \
             .order_by(Sound.uploader_id != message.author.id) \
             .first()
 
         if q is None:
-            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+            await message.channel.send(
+                "Couldn't find sound by name {}. Use `{}list` to view all sounds.".format(stripped, server.prefix))
 
         else:
             user = session.query(User).get(message.author.id)
-    
+
             self.delete_sound(session.query(Sound).filter(Sound.id == q.id))
             await message.channel.send('Deleted `{}`. You have used {} sounds.'.format(stripped, len(user.sounds)))
 
-
-    async def public(self, message, stripped, server):
+    @staticmethod
+    async def public(message, stripped, server):
         stripped = stripped.lower()
 
         s = session.query(Sound) \
             .filter(Sound.name == stripped) \
             .filter(
-                (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
-            ) \
+            (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
+        ) \
             .order_by(Sound.uploader_id != message.author.id) \
             .first()
 
         if s is not None:
             s.public = not s.public
-            await message.channel.send('Sound `{}` has been set to {}.'.format(stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
+            await message.channel.send('Sound `{}` has been set to {}.'.format(
+                stripped, 'public \U0001F513' if s.public else 'private \U0001F510'))
 
         else:
-            await message.channel.send('Couldn\'t find sound by name {}. Use `{}list` to view all sounds.'.format(stripped, server.prefix))
+            await message.channel.send(
+                "Couldn't find sound by name {}. Use `{}list` to view all sounds.".format(stripped, server.prefix))
 
-
-    async def search(self, message, stripped, server):
+    @staticmethod
+    async def search(message, stripped, _guild_data):
 
         embed = discord.Embed(title='Public sounds matching filter:')
 
@@ -690,16 +701,19 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         await message.channel.send(embed=embed)
 
-
+    # noinspection PyBroadException
     async def cleanup(self):
         await self.wait_until_ready()
+
         while not client.is_closed():
 
             try:
                 [await vc.disconnect(force=True) for vc in self.voice_clients if not vc.is_playing()]
+
             except:
                 pass
-            await asyncio.sleep(180)
+
+            await asyncio.sleep(600)
 
 
 async def setup_aio_pika(loop):

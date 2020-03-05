@@ -9,6 +9,7 @@ from config import config
 
 Base = declarative_base()
 
+
 class GuildData(Base):
     __tablename__ = 'servers'
 
@@ -18,6 +19,10 @@ class GuildData(Base):
     sounds = relationship('Sound', backref='server', lazy='dynamic')
     volume = Column(TINYINT(unsigned=True), nullable=False, default=100)
 
+    # max length of server name is 100 characters
+    # store name to do shit rapid
+    name = Column(String(100), nullable=True)
+
     def __repr__(self):
         return '<Server {}>'.format(self.id)
 
@@ -26,13 +31,13 @@ class Sound(Base):
     __tablename__ = 'sounds'
 
     id = Column( Integer, primary_key=True )
-    name = Column( String(20) )
+    name = Column( String(20), index=True )
 
     src = Column( MEDIUMBLOB, nullable=False )
     plays = Column( Integer, nullable=False, default=0 )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
-    uploader_id = Column( BigInteger, ForeignKey('users.id') )
+    uploader_id = Column( BigInteger, ForeignKey('users.id'), index=True )
 
     public = Column( Boolean, nullable=False, default=True )
 
