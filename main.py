@@ -312,7 +312,7 @@ class BotClient(discord.AutoShardedClient):
 
             return c
 
-        def parse_body(message_body: str):
+        def parse_body(message_body: bytes):
 
             return [int(x) for x in message_body.split(b',')]
 
