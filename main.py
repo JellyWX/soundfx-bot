@@ -496,7 +496,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
                 msg = await self.wait_for('message',
                                           check=lambda x: x.author == message.author and x.channel == message.channel)
 
-                if msg.attachments == []:
+                if len(msg.attachments) == 0:
                     await message.channel.send(
                         'Please attach an audio file following the `{}upload` command. Aborted.'.format(server.prefix))
 
