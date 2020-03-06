@@ -343,7 +343,7 @@ class BotClient(discord.AutoShardedClient):
             return
 
         if session.query(GuildData).get(message.guild.id) is None:
-            s = GuildData(id=message.guild.id, prefix='?', roles=['off'])
+            s = GuildData(id=message.guild.id, name=message.guild.name, prefix='?', roles=['off'])
             session.add(s)
             session.commit()
 
