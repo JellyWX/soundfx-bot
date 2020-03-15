@@ -240,7 +240,7 @@ class BotClient(discord.AutoShardedClient):
             if voice.is_playing():
                 voice.stop()
 
-            filename = '/tmp/soundfx-{}-{}'.format(sound.id, int(unix_time() // config.caching_period))
+            filename = '/tmp/soundfx-{}'.format(sound.id)
 
             if not os.path.isfile(filename):
                 print('File not held. Caching into {}'.format(filename))

@@ -2,6 +2,7 @@ from tinyconf.fields import Field, IntegerField, ListField
 from tinyconf.deserializers import IniDeserializer
 from tinyconf.section import Section
 
+
 class Config(IniDeserializer):
     bot_token = Field('bot', strict=True)
     dbl_token = Field('discordbots', strict=False)
@@ -11,7 +12,6 @@ class Config(IniDeserializer):
     fixed_donors = ListField(map=lambda x: int(x.strip()), default=[])
 
     max_sounds = IntegerField()
-    caching_period = IntegerField()
 
     user = Field(strict=True)
     passwd = Field(strict=False)
@@ -20,6 +20,7 @@ class Config(IniDeserializer):
 
     TOKENS = Section(bot_token, dbl_token)
     MYSQL = Section(user, passwd, host, database)
-    DEFAULT = Section(patreon_server, donor_role, fixed_donors, max_sounds, caching_period)
+    DEFAULT = Section(patreon_server, donor_role, fixed_donors, max_sounds)
+
 
 config = Config(filename='config.ini')
