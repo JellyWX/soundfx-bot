@@ -17,11 +17,9 @@ from config import config
 from ctypes.util import find_library
 import discord
 import os
-from time import time as unix_time
 import typing
 from enum import Enum
 import aiohttp
-from aio_pika import connect, IncomingMessage
 import asyncio
 import json
 import traceback
@@ -300,37 +298,6 @@ class BotClient(discord.AutoShardedClient):
     @staticmethod
     def delete_sound(s):
         s.delete(synchronize_session='fetch')
-
-    async def on_web_ping(self, message: IncomingMessage):
-
-        async def find_channel(channel_id):
-
-            c = self.get_channel(channel_id)
-
-            if c is None:
-                c = await self.fetch_channel(channel_id)
-
-            return c
-
-        def parse_body(message_body: bytes):
-
-            return [int(x) for x in message_body.split(b',')]
-
-        sound, user = parse_body(message.body)
-
-        member = session.query(User).get(user)
-        sound = session.query(Sound).get(sound)
-
-        print('Received web ping')
-
-        if member is not None and member.voice_channel is not None:
-            channel = await find_channel(member.voice_channel)
-
-            server = session.query(GuildData).get(channel.guild.id)
-
-            volume: int = server.volume if server is not None else 100
-
-            await self.play_sound(channel, sound, volume)
 
     async def on_error(self, *args):
         session.rollback()
@@ -733,20 +700,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
             await asyncio.sleep(600)
 
 
-async def setup_aio_pika(loop):
-    connection = await connect('amqp://guest:guest@localhost', loop=loop)
-
-    channel = await connection.channel()
-
-    queue = await channel.declare_queue('soundfx')
-
-    await queue.consume(client.on_web_ping, no_ack=True)
-
-
 client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 
 client.loop.create_task(client.cleanup())
-
-client.loop.create_task(setup_aio_pika(client.loop))
 
 client.run(config.bot_token)
