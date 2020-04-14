@@ -1,9 +1,9 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean, Text, LargeBinary
+from sqlalchemy import Column, Integer, BigInteger, String, ForeignKey, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, TINYINT
 from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy_json import NestedMutableJson, MutableJson
+from sqlalchemy_json import NestedMutableJson
 
 from config import config
 
