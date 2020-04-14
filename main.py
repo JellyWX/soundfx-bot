@@ -1,17 +1,6 @@
-"""
-247203937189363712
-335269633542062080
-148600183754588160
-226040626922127360
-237717057397850114
-155813234174066688
-271115901426728961
-137377824037142528
-190654952362737664
-"""
 import re
 
-from models import GuildData, session, User, Sound
+from models import GuildData, session, Sound
 from config import config
 
 from ctypes.util import find_library
@@ -301,18 +290,13 @@ class BotClient(discord.AutoShardedClient):
             session.add(s)
             session.commit()
 
-        if session.query(User).get(message.author.id) is None:
-            s = User(id=message.author.id)
-            session.add(s)
-            session.commit()
-
         try:
             if message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(
                     message.guild.me).embed_links:
                 await self.get_cmd(message)
                 session.commit()
 
-        except Exception as e:
+        except:
             traceback.print_exc()
 
     async def get_cmd(self, message):
@@ -362,12 +346,12 @@ class BotClient(discord.AutoShardedClient):
 
         await e.edit(content='Pong! {}ms round trip'.format(round(delta * 1000)))
 
-    async def help(self, message, stripped, server):
+    async def help(self, message, *_args):
         embed = discord.Embed(title='HELP', color=self.EMBED_COLOR,
                               description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
 
-    async def info(self, message, stripped, server):
+    async def info(self, message, _stripped, server):
         em = discord.Embed(title='INFO', color=self.EMBED_COLOR, description='''Default prefix: `?`
 
 Reset prefix: `@{user} prefix ?`
@@ -384,8 +368,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
 *If you have enquiries about new features, please send to the discord server*
 *If you have enquiries about bot development for you or your server, please DM me*
-        '''.format(user=self.user.name, p=server.prefix)
-                           )
+        '''.format(user=self.user.name, p=server.prefix))
 
         await message.channel.send(embed=em)
 
@@ -401,8 +384,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
             server.roles = roles
 
-            await message.channel.send(
-                'Roles set. Please note members with `Manage Server` permissions will be able to do sounds regardless of roles.')
+            await message.channel.send('Roles set. Please note members with `Manage Server` permissions will be'
+                                       ' able to do sounds regardless of roles.')
 
         else:
             if len(server.roles) == 0:
@@ -417,21 +400,22 @@ There is a maximum sound limit per user. This can be removed by donating at http
     async def wait_for_file(self, message, stripped, server):
         stripped = stripped.lower()
 
-        premium = await self.check_premium(message.author.id)
+        current_sounds = session.query(Sound).filter(Sound.uploader_id == message.author.id)
 
-        user = session.query(User).get(message.author.id)
-
-        if (len(user.sounds) >= config.max_sounds) and not premium:
-            await message.channel.send(
-                'Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(
-                    config.max_sounds, prefix=server.prefix))
+        if current_sounds.count() >= config.max_sounds:
+            premium = await self.check_premium(message.author.id)
+            if not premium:
+                await message.channel.send(
+                    'Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a '
+                    'sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(
+                        config.max_sounds, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
 
         elif check_digits(stripped):
-            await message.channel.send(
-                'Please use at least one non-numerical character in your sound\'s name (this helps distinguish it from IDs)')
+            await message.channel.send('Please use at least one non-numerical character in your sound\'s name'
+                                       ' (this helps distinguish it from IDs)')
 
         elif len(stripped) > 20:
             await message.channel.send('Please choose a shorter name. You used {}/20 characters.'.format(len(stripped)))
@@ -440,8 +424,8 @@ There is a maximum sound limit per user. This can be removed by donating at http
             sound = session.query(Sound).filter(Sound.server_id == message.guild.id).filter(Sound.name == stripped)
 
             if sound.first() is not None:
-                await message.channel.send(
-                    'A sound in this server already exists under that name. Please either delete that sound first, or choose a different name.')
+                await message.channel.send('A sound in this server already exists under that name. Please either delete'
+                                           ' that sound first, or choose a different name.')
 
             else:
                 await message.channel.send(
@@ -461,11 +445,11 @@ There is a maximum sound limit per user. This can be removed by donating at http
                         await message.channel.send('File not recognized as being a valid audio file.')
 
                     elif len(out) > 1000000:
-                        await message.channel.send(
-                            'Please only send audio files that are under 1MB serverside compressed. The bot uses Opus 28kbps compression when storing audio.')
+                        await message.channel.send('Please only send audio files that are under 1MB compressed. '
+                                                   'The bot uses Opus 28kbps compression when storing audio.')
 
                     else:
-                        sound = Sound(src=out, server=server, user=user, name=stripped)
+                        sound = Sound(src=out, server=server, uploader_id=message.author.id, name=stripped)
 
                         session.add(sound)
 
@@ -486,9 +470,9 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
             if s is None:
 
-                await message.channel.send(
-                    'Sound `{0}` could not be found. Use `{1}list` to view all sounds, `{1}search` to search for public sounds, or `{1}play ID:1234` to play a sound by ID'.format(
-                        stripped, server.prefix))
+                await message.channel.send('Sound `{0}` could not be found. Use `{1}list` to view all sounds, '
+                                           '`{1}search` to search for public sounds, or `{1}play ID:1234` to play '
+                                           'a sound by ID'.format(stripped, server.prefix))
 
             else:
                 if s.server.name is None:
@@ -551,8 +535,7 @@ There is a maximum sound limit per user. This can be removed by donating at http
         strings = asyncio.Queue()
 
         if 'me' in stripped:
-            user = session.query(User).get(message.author.id)
-            a = user.sounds
+            a = session.query(Sound).filter(Sound.uploader_id == message.author.id)
         else:
             a = server.sounds
 
@@ -582,38 +565,33 @@ There is a maximum sound limit per user. This can be removed by donating at http
         if len(current_buffer) > 0:
             await message.channel.send(current_buffer.strip(', '))
 
-    async def delete(self, message, stripped, server):
-        stripped = stripped.lower()
+    @staticmethod
+    def search_by_name(name, uploader_id, guild_id):
+        name = name.lower()
 
         q = session.query(Sound) \
-            .filter(Sound.name == stripped) \
+            .filter(Sound.name == name) \
             .filter(
-            (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
+            (Sound.uploader_id == uploader_id) | (Sound.server_id == guild_id)
         ) \
-            .order_by(Sound.uploader_id != message.author.id) \
+            .order_by(Sound.uploader_id != uploader_id) \
             .first()
+
+        return q
+
+    async def delete(self, message, stripped, server):
+        q = self.search_by_name(stripped, message.author.id, message.guild.id)
 
         if q is None:
             await message.channel.send(
                 "Couldn't find sound by name {}. Use `{}list` to view all sounds.".format(stripped, server.prefix))
 
         else:
-            user = session.query(User).get(message.author.id)
-
             self.delete_sound(session.query(Sound).filter(Sound.id == q.id))
-            await message.channel.send('Deleted `{}`. You have used {} sounds.'.format(stripped, len(user.sounds)))
+            await message.channel.send('Deleted `{}`'.format(stripped))
 
-    @staticmethod
-    async def public(message, stripped, server):
-        stripped = stripped.lower()
-
-        s = session.query(Sound) \
-            .filter(Sound.name == stripped) \
-            .filter(
-            (Sound.uploader_id == message.author.id) | (Sound.server_id == message.guild.id)
-        ) \
-            .order_by(Sound.uploader_id != message.author.id) \
-            .first()
+    async def public(self, message, stripped, server):
+        s = self.search_by_name(stripped, message.author.id, message.guild.id)
 
         if s is not None:
             s.public = not s.public

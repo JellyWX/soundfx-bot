@@ -42,17 +42,6 @@ class Sound(Base):
     public = Column( Boolean, nullable=False, default=True )
 
 
-class User(Base):
-    __tablename__ = 'users'
-
-    id = Column(BigInteger, primary_key=True, autoincrement=False)
-
-    sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
-
-    def __repr__(self):
-        return '<User {}>'.format(self.id)
-
-
 if config.passwd is not None:
     engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=config.user, passwd=config.passwd, host=config.host, db=config.database))
 else:
