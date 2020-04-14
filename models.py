@@ -47,8 +47,6 @@ class User(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=False)
 
-    voice_channel = Column(BigInteger, index=True)
-
     sounds = relationship('Sound', backref='user', foreign_keys=[Sound.uploader_id])
 
     def __repr__(self):

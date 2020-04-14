@@ -181,19 +181,6 @@ class BotClient(discord.AutoShardedClient):
     async def on_guild_update(self, _before, after):
         self.update_guild_name(after)
 
-    # noinspection PyMethodMayBeStatic
-    async def on_voice_state_update(self, member, _, after):
-        user = session.query(User).get(member.id)
-
-        if user is not None:
-            if after.channel is None:
-                user.voice_channel = None
-
-            else:
-                user.voice_channel = after.channel.id
-
-            session.commit()
-
     @staticmethod
     def update_guild_name(guild):
         g = session.query(GuildData).filter(GuildData.id == guild.id).first()
