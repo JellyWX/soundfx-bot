@@ -37,7 +37,7 @@ class Sound(Base):
     plays = Column( Integer, nullable=False, default=0 )
 
     server_id = Column( BigInteger, ForeignKey('servers.id') )
-    uploader_id = Column( BigInteger, ForeignKey('users.id'), index=True )
+    uploader_id = Column( BigInteger, index=True )
 
     public = Column( Boolean, nullable=False, default=True )
 
