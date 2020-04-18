@@ -402,13 +402,11 @@ There is a maximum sound limit per user. This can be removed by donating at http
 
         current_sounds = session.query(Sound).filter(Sound.uploader_id == message.author.id)
 
-        if current_sounds.count() >= config.max_sounds:
-            premium = await self.check_premium(message.author.id)
-            if not premium:
-                await message.channel.send(
-                    'Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a '
-                    'sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(
-                        config.max_sounds, prefix=server.prefix))
+        if current_sounds.count() >= config.max_sounds and not await self.check_premium(message.author.id):
+            await message.channel.send(
+                'Sorry, but the maximum is {} sounds per user. You can either use `{prefix}delete` to remove a '
+                'sound or donate to get unlimited sounds at https://patreon.com/jellywx'.format(
+                    config.max_sounds, prefix=server.prefix))
 
         elif stripped == '':
             await message.channel.send('Please provide a name for your sound in the command, e.g `?upload TERMINATION`')
