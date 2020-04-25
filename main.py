@@ -373,6 +373,9 @@ play a stupid fucking sound when someone shows up, for one cheap laugh before ge
 everyone? Fuck you. Greet sounds aren't funny. It has been exactly {} days, {} hours, {} minutes and {} seconds since 
 greet sounds were officially removed, and its unfortunate that those numbers aren't higher. You're as bad 
 as a dankmemes SR user. Let a joke die. Jesus Christ.
+
+You best hope there's never a robot uprising because you know who I'm coming for first. You're both pieces of fucking 
+work. 
             
 Absolutely pathetic.'''.format(name, days, hours, minutes, seconds))
 
