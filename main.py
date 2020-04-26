@@ -100,8 +100,6 @@ class BotClient(discord.AutoShardedClient):
             'search': Command(self.search, PermissionLevels.UNRESTRICTED),
             'popular': Command(self.search, PermissionLevels.UNRESTRICTED),
             'random': Command(self.search, PermissionLevels.UNRESTRICTED),
-
-            'greet': Command(self.fuck_you_patrick, PermissionLevels.UNRESTRICTED),
         }
 
         self.aiohttp_session: typing.Optional[aiohttp.client.ClientSession] = None
@@ -353,31 +351,6 @@ class BotClient(discord.AutoShardedClient):
         embed = discord.Embed(title='HELP', color=self.EMBED_COLOR,
                               description='Please visit https://soundfx.jellywx.com/help/'.format(self.user.name))
         await message.channel.send(embed=embed)
-
-    @staticmethod
-    async def fuck_you_patrick(message, *_args):
-        from datetime import datetime
-
-        if message.author.id in (242715778846162945, 239104964868177921, 203532103185465344):
-            name = 'Patrick' if message.author.id == 242715778846162945 else 'James'
-            d = datetime.now() - datetime(minute=39, hour=17, day=1, month=11, year=2019)
-
-            seconds = d.total_seconds()
-            minutes, seconds = divmod(seconds, 60)
-            hours, minutes = divmod(minutes, 60)
-            days, hours = divmod(hours, 24)
-
-            await message.channel.send('''No, {}, I have fucking had it with you. Greet sounds were not good and are  
-not coming back. How the fuck would you like it if someone asked you to spend time every day just to 
-play a stupid fucking sound when someone shows up, for one cheap laugh before getting instantly muted by 
-everyone? Fuck you. Greet sounds aren't funny. It has been exactly {} days, {} hours, {} minutes and {} seconds since 
-greet sounds were officially removed, and its unfortunate that those numbers aren't higher. You're as bad 
-as a dankmemes SR user. Let a joke die. Jesus Christ.
-
-You best hope there's never a robot uprising because you know who I'm coming for first. You're both pieces of fucking 
-work. 
-            
-Absolutely pathetic.'''.format(name, days, hours, minutes, seconds))
 
     async def info(self, message, _stripped, server):
         em = discord.Embed(title='INFO', color=self.EMBED_COLOR, description='''Default prefix: `?`
