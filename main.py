@@ -303,6 +303,7 @@ class BotClient(discord.AutoShardedClient):
     async def get_cmd(self, message):
 
         guild_data: GuildData = session.query(GuildData).get(message.guild.id)
+        guild_data.name = message.guild.name
         prefix: str = guild_data.prefix
 
         command: typing.Optional[str] = None
